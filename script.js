@@ -199,19 +199,25 @@ const renderQuizQuestion = () => {
     
     document.getElementById('question-counter').textContent = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
     document.getElementById('quiz-progress-bar').style.width = `${((currentQuestionIndex + 1) / questions.length) * 100}%`;
-    document.getElementById('question-text').innerHTML = question.question;
+    document.getElementById('question-text').textContent = question.question;
 
-    document.getElementById('options-container').innerHTML = question.options.map((option, index) => `
-        <button class="option-btn" data-index="${index}">${option}</button>
-    `).join('');
+    const optionsContainer = document.getElementById('options-container');
+    optionsContainer.innerHTML = ''; // Clear previous options
 
-    document.querySelectorAll('.option-btn').forEach(btn => {
+    question.options.forEach((option, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.dataset.index = index;
+        btn.textContent = option;
+        
         btn.addEventListener('click', () => {
             if (state.quiz.answerSubmitted) return;
             state.quiz.selectedAnswer = parseInt(btn.dataset.index, 10);
             document.querySelectorAll('.option-btn.selected').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
         });
+        
+        optionsContainer.appendChild(btn);
     });
 
     document.getElementById('quiz-action-buttons').innerHTML = `<button id="submit-answer-btn" class="btn btn-primary">Submit</button>`;
