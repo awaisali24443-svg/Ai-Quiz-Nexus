@@ -17,6 +17,11 @@ const QuizScreen: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [answerSubmitted, setAnswerSubmitted] = useState(false);
 
+    // FIX: Reordered hook and callback declarations to resolve a "used before declaration" error.
+    // The circular dependency (submit -> stop -> timer -> timeout -> submit) is resolved by
+    // defining `handleAnswerSubmit` after `useQuizTimer` so it can access `stop`. `handleTimeout`
+    // is also defined after `handleAnswerSubmit` to access it. `useQuizTimer` receives `handleTimeout`,
+    // which works because the callback is only invoked after all declarations have been made.
     const handleAnswerSubmit = useCallback(() => {
         if (answerSubmitted) return;
         stop();
