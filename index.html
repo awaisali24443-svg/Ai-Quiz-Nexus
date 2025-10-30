@@ -58,6 +58,31 @@
                     <button id="start-journey-btn" class="btn btn-primary btn-large">Start Your Journey</button>
                 </div>
             </section>
+
+            <!-- Auth Screen -->
+            <section id="auth-screen" class="screen hidden">
+                <div class="auth-container">
+                    <div class="auth-card">
+                        <h2 class="auth-title">Welcome to AI Quiz Nexus</h2>
+                        <p class="auth-subtitle">Your journey to knowledge mastery begins here.</p>
+                        <form id="login-form">
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" name="email" placeholder="your.email@example.com" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required>
+                                <small>Password must be at least 8 characters.</small>
+                            </div>
+                            <button type="button" id="login-btn" class="btn btn-primary btn-full">Login</button>
+                            <button type="button" id="signup-btn" class="btn btn-secondary btn-full">Sign Up</button>
+                        </form>
+                        <div class="divider"></div>
+                        <button type="button" id="guest-btn" class="btn btn-tertiary">Continue as Guest</button>
+                    </div>
+                </div>
+            </section>
             
             <!-- Home Screen -->
             <section id="home-screen" class="screen hidden">

@@ -7,13 +7,13 @@ if (!API_KEY) {
 }
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-const TOTAL_LEVELS = 20;
+const TOTAL_LEVELS = 30;
 const QUESTIONS_PER_QUIZ = 10;
-const TIMER_SECONDS_PER_QUESTION = 30;
 const SCORE_TO_UNLOCK_NEXT_LEVEL = 6;
 
 const Screen = {
     WELCOME: 'welcome-screen',
+    AUTH: 'auth-screen',
     HOME: 'home-screen',
     LEVEL: 'level-screen',
     QUIZ: 'quiz-screen',
@@ -62,6 +62,25 @@ let state = {
     }
 };
 
+// --- QUIZ HELPERS ---
+const getDifficulty = (level) => {
+    if (level <= 10) return 'easy';
+    if (level <= 20) return 'medium';
+    if (level <= 28) return 'hard';
+    return 'expert';
+};
+
+const getTimerDuration = (difficulty) => {
+    switch (difficulty) {
+        case 'easy': return 50;
+        case 'medium': return 40;
+        case 'hard': return 30;
+        case 'expert': return 20;
+        default: return 30;
+    }
+};
+
+
 // --- GEMINI API SERVICE ---
 const quizQuestionSchema = {
     type: Type.OBJECT,
@@ -75,7 +94,7 @@ const quizQuestionSchema = {
 
 const generateQuizQuestions = async (topicTitle, level) => {
     try {
-        const difficulty = level <= 5 ? 'easy' : level <= 12 ? 'medium' : 'hard';
+        const difficulty = getDifficulty(level);
         const prompt = `Generate a quiz with ${QUESTIONS_PER_QUIZ} multiple-choice questions about "${topicTitle}". The difficulty must be ${difficulty} (level ${level}/${TOTAL_LEVELS}). Each question needs exactly 4 options. Ensure questions are distinct and relevant.`;
         
         const response = await ai.models.generateContent({
@@ -115,7 +134,7 @@ const generateAiFeedback = async (topicTitle, score) => {
 
 // --- MOCK DATA FALLBACK ---
 const getMockQuestions = (topic) => {
-    console.warn("Using mock questions due to API failure.");
+    console.warn("Using mock questions due to API failure or offline mode.");
     return Array.from({ length: QUESTIONS_PER_QUIZ }, (_, i) => ({
         question: `This is mock question #${i + 1} for ${topic}. What is the correct option?`,
         options: ["Mock Option A", "Mock Option B", "Mock Option C", "Mock Option D"],
@@ -272,12 +291,20 @@ const renderProfileScreen = () => {
 
 // --- QUIZ LOGIC ---
 const startTimer = () => {
-    let timeLeft = TIMER_SECONDS_PER_QUESTION;
+    const difficulty = getDifficulty(state.currentLevel);
+    let timeLeft = getTimerDuration(difficulty);
     const timerEl = document.getElementById('time-left');
-    timerEl.textContent = `00:${String(timeLeft).padStart(2, '0')}`;
+
+    const updateTimerDisplay = () => {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    };
+
+    updateTimerDisplay();
     state.quiz.timerId = setInterval(() => {
         timeLeft--;
-        timerEl.textContent = `00:${String(timeLeft).padStart(2, '0')}`;
+        updateTimerDisplay();
         if (timeLeft <= 0) handleAnswerSubmit();
     }, 1000);
 };
@@ -365,7 +392,7 @@ const navigateTo = (screenId) => {
     const bgClass = state.currentTopic ? `bg-${state.currentTopic.id}` : 'bg-default';
     dom.appContainer.className = bgClass;
 
-    const showHeader = screenId !== Screen.WELCOME;
+    const showHeader = screenId !== Screen.WELCOME && screenId !== Screen.AUTH;
     dom.appHeader.classList.toggle('hidden', !showHeader);
     dom.appFooter.classList.toggle('hidden', !showHeader);
 
@@ -377,6 +404,7 @@ const navigateTo = (screenId) => {
         case Screen.QUIZ: startQuiz(); break;
         case Screen.RESULTS: renderResultsScreen(); break;
         case Screen.PROFILE: renderProfileScreen(); break;
+        // No default render needed for welcome/auth
     }
 };
 
@@ -384,7 +412,7 @@ const updateHeader = (screenId) => {
     let navHTML = '';
     if (screenId === Screen.QUIZ) {
         navHTML = `<button id="quit-quiz-btn" class="btn btn-secondary">Quit</button>`;
-    } else if (screenId !== Screen.WELCOME) {
+    } else if (screenId !== Screen.WELCOME && screenId !== Screen.AUTH) {
         navHTML = `
             <nav>
                 <button id="profile-btn" class="btn btn-secondary">
@@ -400,9 +428,9 @@ const updateHeader = (screenId) => {
 
 // --- EVENT LISTENERS ---
 const addEventListeners = () => {
-    document.getElementById('start-journey-btn').addEventListener('click', () => navigateTo(Screen.HOME));
+    document.getElementById('start-journey-btn').addEventListener('click', () => navigateTo(Screen.AUTH));
     document.querySelector('.logo').addEventListener('click', () => {
-        if (state.currentScreen !== Screen.WELCOME) {
+        if (state.currentScreen !== Screen.WELCOME && state.currentScreen !== Screen.AUTH) {
             navigateTo(Screen.HOME);
         }
     });
@@ -416,7 +444,10 @@ const addEventListeners = () => {
     document.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target) return;
-
+        
+        if (target.id === 'login-btn' || target.id === 'signup-btn' || target.id === 'guest-btn') {
+            navigateTo(Screen.HOME);
+        }
         if (target.id === 'submit-answer-btn') handleAnswerSubmit();
         if (target.id === 'next-question-btn') handleNextQuestion();
         if (target.id === 'profile-btn') navigateTo(Screen.PROFILE);
@@ -472,6 +503,13 @@ const initMatrix = () => {
 
 // --- INITIALIZATION ---
 const init = () => {
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(reg => console.log('Service Worker registered.'))
+                .catch(err => console.log(`Service Worker registration failed: ${err}`));
+        });
+    }
     loadProgress();
     addEventListeners();
     initMatrix();
