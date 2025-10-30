@@ -82,7 +82,6 @@ const getTimerDuration = (difficulty) => {
 
 
 // --- GEMINI API SERVICE ---
-// FIX: Use Type enum for schema definition instead of string literals.
 const quizQuestionSchema = {
     type: Type.OBJECT,
     properties: {
@@ -103,7 +102,6 @@ const generateQuizQuestions = async (topicTitle, level) => {
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                // FIX: Use Type enum for schema definition instead of string literals.
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: { questions: { type: Type.ARRAY, items: quizQuestionSchema } },
