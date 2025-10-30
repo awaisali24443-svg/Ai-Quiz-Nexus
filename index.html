@@ -1,0 +1,55 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Quiz Nexus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'brand-primary': '#4f46e5',
+              'brand-secondary': '#3b82f6',
+              'dark-bg': '#0f172a',
+              'dark-card': '#1e293b',
+              'dark-border': '#334155',
+              'light-text': '#f8fafc',
+              'medium-text': '#94a3b8',
+              'dark-accent': '#3730a3',
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+            },
+            backgroundImage: {
+              'tech-circuit': "url('https://picsum.photos/seed/tech/1920/1080?grayscale&blur=2')",
+              'results-bg': "url('https://picsum.photos/seed/results/1920/1080?grayscale&blur=2')",
+              'profile-bg': "url('https://picsum.photos/seed/profile/1920/1080?grayscale&blur=2')",
+              'quiz-bg': "url('https://picsum.photos/seed/quizbg/1920/1080?grayscale&blur=2')",
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+</head>
+  <body class="bg-dark-bg text-light-text font-sans">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
