@@ -1,9 +1,9 @@
 const CACHE_NAME = 'ai-quiz-nexus-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/script.js',
+  './',
+  './index.html',
+  './styles.css',
+  './script.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap',
   'https://www.transparenttextures.com/patterns/stardust.png'
 ];
