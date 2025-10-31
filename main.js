@@ -561,7 +561,7 @@ const triggerConfetti = () => {
     
     let confettiPieces = [];
     const numberOfPieces = 150;
-    const colors = ['#00eaff', '#9B51E0', '#00F6A3', '#FFBD3E', '#f8fafc'];
+    const colors = ['#007bff', '#28a745', '#ffc107', '#6c757d', '#17a2b8'];
 
     function ConfettiParticle() {
         this.x = Math.random() * canvas.width;
