@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-const DATA_DIR = path.join(__dirname, 'css', 'data');
+const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
 app.get('/', (req, res) => {
@@ -183,6 +183,26 @@ app.post('/api/change-password', async (req, res) => {
     res.status(200).json({ message: 'Password changed successfully.' });
 });
 
+const quizSchema = {
+    type: Type.OBJECT,
+    properties: {
+        questions: {
+            type: Type.ARRAY,
+            description: 'An array of quiz question objects.',
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    q: { type: Type.STRING, description: 'The question text.' },
+                    options: { type: Type.ARRAY, description: 'An array of 4 strings representing the possible answers.', items: { type: Type.STRING } },
+                    answer: { type: Type.STRING, description: 'The correct answer, which must exactly match one of the items in the options array.' }
+                },
+                required: ['q', 'options', 'answer']
+            }
+        }
+    },
+    required: ['questions']
+};
+
 
 app.post('/api/generate-quiz', async (req, res) => {
     if (!process.env.API_KEY) {
@@ -210,8 +230,6 @@ app.post('/api/generate-quiz', async (req, res) => {
     else if (level <= 20) difficulty = 'Intermediate';
     else difficulty = 'Expert';
 
-    const quizSchema = { /* ... schema remains the same ... */ };
-
     let prompt = `Generate a quiz with ${questionsPerQuiz} multiple-choice questions on the topic of '${topic}'. The difficulty should be '${difficulty}', appropriate for level ${level} out of ${totalLevels}. A higher level means a harder quiz. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
 
     if (answeredQuestions && answeredQuestions.length > 0) {
@@ -225,7 +243,7 @@ app.post('/api/generate-quiz', async (req, res) => {
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
-                responseSchema: { type: Type.OBJECT, properties: { questions: { type: Type.ARRAY, description: 'An array of quiz question objects.', items: { type: Type.OBJECT, properties: { q: { type: Type.STRING, description: 'The question text.' }, options: { type: Type.ARRAY, description: 'An array of 4 strings representing the possible answers.', items: { type: Type.STRING } }, answer: { type: Type.STRING, description: 'The correct answer, which must exactly match one of the items in the options array.' } }, required: ['q', 'options', 'answer'] } } }, required: ['questions'] },
+                responseSchema: quizSchema,
             },
         });
         
@@ -262,8 +280,6 @@ app.post('/api/generate-time-challenge', async (req, res) => {
         return res.status(503).json({ message: 'AI service could not be initialized. The API key might be invalid.' });
     }
 
-    const quizSchema = { /* ... schema remains the same ... */ };
-
     const prompt = `Generate a quiz with exactly ${questionsPerQuiz} multiple-choice questions. The questions should be a mix of general knowledge from the following topics: ${selectedTopics}. The difficulty should be mixed, from easy to medium. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
 
     try {
@@ -272,7 +288,7 @@ app.post('/api/generate-time-challenge', async (req, res) => {
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
-                responseSchema: { type: Type.OBJECT, properties: { questions: { type: Type.ARRAY, description: 'An array of quiz question objects.', items: { type: Type.OBJECT, properties: { q: { type: Type.STRING, description: 'The question text.' }, options: { type: Type.ARRAY, description: 'An array of 4 strings representing the possible answers.', items: { type: Type.STRING } }, answer: { type: Type.STRING, description: 'The correct answer, which must exactly match one of the items in the options array.' } }, required: ['q', 'options', 'answer'] } } }, required: ['questions'] },
+                responseSchema: quizSchema,
             },
         });
         
@@ -302,7 +318,9 @@ app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard
 
 app.get('*', (req, res, next) => {
     const extension = path.extname(req.path);
-    if (extension && extension !== '.html') return next();
+    // If it's a file with an extension (like .js, .css), let express.static handle it.
+    // If it's a path without an extension, assume it's a client-side route and serve index.html.
+    if (extension) return next();
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
