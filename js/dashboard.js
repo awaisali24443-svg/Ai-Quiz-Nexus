@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dom = {
         screens: document.querySelectorAll('.screen'),
         loadingOverlay: document.getElementById('loading-overlay'),
+        loadingText: document.getElementById('loading-text'),
         usernameDisplay: document.getElementById('username-display'),
         guestBanner: document.getElementById('guest-banner'),
         appHeader: document.getElementById('app-header'),
@@ -53,13 +54,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function getQuizQuestions(topicTitle, level) {
-        // In a real app, this could be an API call. For now, it's a placeholder.
-        const placeholderQuestions = Array.from({ length: QUESTIONS_PER_QUIZ }, (_, i) => ({
-            q: `(L${level}) Question ${i + 1} for ${topicTitle}?`,
-            options: [`Answer A`, `Answer B`, `Answer C`, `Correct Answer`],
-            answer: `Correct Answer`
-        }));
-        return shuffleArray(placeholderQuestions);
+        try {
+            const response = await fetch('/api/generate-quiz', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topic: topicTitle,
+                    level,
+                    questionsPerQuiz: QUESTIONS_PER_QUIZ,
+                    totalLevels: TOTAL_LEVELS
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to generate quiz.');
+            }
+
+            const data = await response.json();
+            // The API returns { questions: [...] }, ensure we return the array.
+            return shuffleArray(data.questions); 
+        } catch (error) {
+            console.error('Error fetching quiz questions:', error);
+            // Re-throw to be caught by the caller, which will show an alert.
+            throw error; 
+        }
     }
     
     // --- PROGRESS & STORAGE ---
@@ -253,6 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function startQuiz() {
         resetQuizState();
+        dom.loadingText.textContent = 'Generating your quiz with AI...';
         dom.loadingOverlay.classList.remove('hidden');
         try {
             const questions = await getQuizQuestions(state.currentTopic.title, state.currentLevel);
@@ -261,10 +281,11 @@ document.addEventListener('DOMContentLoaded', () => {
             renderQuizQuestion();
         } catch (error) {
             console.error(error);
-            alert("Failed to start quiz. Please try again.");
+            alert(`Failed to start quiz: ${error.message} Please try again.`);
             navigateTo(Screen.LEVEL);
         } finally {
             dom.loadingOverlay.classList.add('hidden');
+            dom.loadingText.textContent = 'Loading...';
         }
     }
 

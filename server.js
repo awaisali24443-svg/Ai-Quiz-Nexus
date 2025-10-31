@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import bcrypt from 'bcryptjs';
+import { GoogleGenAI, Type } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,7 +12,18 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+// Initialize Gemini AI
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const DATA_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+
+// Define the root route before serving static files
+// This ensures that visiting the base URL serves the login page
+// instead of the default index.html from the static middleware.
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
 
 // Middleware
 app.use(express.json()); // for parsing application/json
@@ -91,6 +103,72 @@ app.post('/api/login', async (req, res) => {
     res.status(200).json({ username: user.username, email: user.email });
 });
 
+// Generate Quiz with Gemini
+app.post('/api/generate-quiz', async (req, res) => {
+    const { topic, level, questionsPerQuiz, totalLevels } = req.body;
+
+    if (!topic || !level) {
+        return res.status(400).json({ message: 'Topic and level are required.' });
+    }
+
+    const quizSchema = {
+        type: Type.OBJECT,
+        properties: {
+            questions: {
+                type: Type.ARRAY,
+                description: 'An array of quiz question objects.',
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        q: {
+                            type: Type.STRING,
+                            description: 'The question text.'
+                        },
+                        options: {
+                            type: Type.ARRAY,
+                            description: 'An array of 4 strings representing the possible answers.',
+                            items: { type: Type.STRING }
+                        },
+                        answer: {
+                            type: Type.STRING,
+                            description: 'The correct answer, which must exactly match one of the items in the options array.'
+                        }
+                    },
+                    required: ['q', 'options', 'answer']
+                }
+            }
+        },
+        required: ['questions']
+    };
+
+    const prompt = `Generate a quiz with ${questionsPerQuiz || 10} multiple-choice questions on the topic of '${topic}'. The difficulty should be appropriate for level ${level} out of ${totalLevels || 30}. A higher level means a harder quiz. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: quizSchema,
+            },
+        });
+        
+        const jsonText = response.text.trim();
+        const quizData = JSON.parse(jsonText);
+        
+        // Basic validation
+        if (!quizData.questions || !Array.isArray(quizData.questions) || quizData.questions.length === 0) {
+            throw new Error("AI returned invalid or empty quiz data.");
+        }
+
+        res.status(200).json(quizData);
+
+    } catch (error) {
+        console.error('Error generating quiz with Gemini:', error);
+        res.status(500).json({ message: 'Failed to generate quiz. The AI might be busy, please try again later.' });
+    }
+});
+
 
 // --- Serve HTML files ---
 
@@ -115,6 +193,18 @@ app.get('*', (req, res, next) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+async function startServer() {
+    try {
+        // Ensure the data directory exists
+        await fs.mkdir(DATA_DIR, { recursive: true });
+        
+        app.listen(port, () => {
+          console.log(`Server is running on http://localhost:${port}`);
+        });
+    } catch (error) {
+        console.error("Failed to start server:", error);
+        process.exit(1);
+    }
+}
+
+startServer();
