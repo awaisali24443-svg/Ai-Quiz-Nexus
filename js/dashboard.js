@@ -51,6 +51,57 @@ document.addEventListener('DOMContentLoaded', () => {
         quiz: {},
     };
 
+    // --- AUDIO ---
+    let audioCtx;
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    function playSound(type) {
+        if (!audioCtx) return;
+
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.01);
+
+        switch (type) {
+            case 'click':
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
+                break;
+            case 'correct':
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(698.46, audioCtx.currentTime + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
+                break;
+            case 'incorrect':
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(220, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(164.81, audioCtx.currentTime + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
+                break;
+            case 'levelUp':
+                oscillator.type = 'triangle';
+                const now = audioCtx.currentTime;
+                oscillator.frequency.setValueAtTime(440, now);
+                oscillator.frequency.linearRampToValueAtTime(587.33, now + 0.1);
+                oscillator.frequency.linearRampToValueAtTime(880, now + 0.2);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, now + 0.3);
+                break;
+        }
+
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    }
+
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -88,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const topic = TOPICS.find(t => t.title === topicTitle);
             if (!topic || !window.QUIZ_DATA || !window.QUIZ_DATA[topic.id]) {
                 console.error(`No fallback questions available for topic: ${topicTitle}`);
-                // Re-throw a more user-friendly error
                 throw new Error('Failed to load quiz questions for this topic. Please try again later.');
             }
 
@@ -119,18 +169,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const saved = localStorage.getItem(key);
             const parsedProgress = saved ? JSON.parse(saved) : {};
 
-            // Migration for old structure
             if (parsedProgress.totalHints === undefined) {
                 state.userProgress = {
-                    totalHints: 30, // Give existing users 30 hints
+                    totalHints: 30,
                     topics: parsedProgress
                 };
-                saveProgress(); // Save the new structure back
+                saveProgress();
             } else {
                 state.userProgress = parsedProgress;
             }
         } else {
-            // Reset for guests or no data
             state.userProgress = { totalHints: 30, topics: {} };
         }
     }
@@ -156,10 +204,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderHintCounters() {
         const hints = state.userProgress.totalHints;
         dom.headerHintCounter.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A6 6 0 0 1 2 6zm6 8.5a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1h.5a.5.5 0 0 1 .5.5zM.034 6a5.5 5.5 0 1 1 10.932 0A5.5 5.5 0 0 1 .034 6z"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="bi bi-lightbulb" style="color: var(--accent-yellow);">
+                <path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A6 6 0 0 1 2 6zm6 8.5a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1h.5a.5.5 0 0 1 .5.5z"/>
             </svg>
-            <span>${hints} Hints</span>
+            <span>${hints}</span>
         `;
         dom.quizHintsLeft.textContent = hints;
     }
@@ -175,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         topicGrid.querySelectorAll('.topic-card').forEach(card => {
             card.addEventListener('click', () => {
+                playSound('click');
                 state.currentTopic = TOPICS.find(t => t.title === card.dataset.topicTitle);
                 navigateTo(Screen.LEVEL);
             });
@@ -204,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         levelGrid.querySelectorAll('.unlocked, .completed').forEach(btn => {
             btn.addEventListener('click', () => {
+                playSound('click');
                 state.currentLevel = parseInt(btn.dataset.level, 10);
                 navigateTo(Screen.QUIZ);
             });
@@ -250,7 +300,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const isCorrect = selectedAnswer === question.answer;
 
         if (isCorrect) {
+            playSound('correct');
             state.quiz.score += hintUsedThisQuestion ? 0.5 : 1;
+        } else {
+            playSound('incorrect');
         }
 
         document.querySelectorAll('.option-btn').forEach(btn => {
@@ -268,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('results-topic-text').textContent = `Performance for ${state.currentTopic.title} - Level ${state.currentLevel}`;
         document.getElementById('final-score-value').textContent = String(score);
         document.getElementById('total-questions-value').textContent = String(QUESTIONS_PER_QUIZ);
-        document.getElementById('correct-answers').textContent = String(score);
+        document.getElementById('correct-answers').textContent = String(score % 1 === 0 ? score : score.toFixed(1));
         document.getElementById('incorrect-answers').textContent = String(QUESTIONS_PER_QUIZ - score);
 
         const unlocked = score >= SCORE_TO_UNLOCK_NEXT_LEVEL;
@@ -277,7 +330,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.isGuest) {
             unlockMsg.textContent = 'Sign up to save progress and unlock new levels!';
         } else if (unlocked) {
-            unlockMsg.textContent = state.currentLevel < TOTAL_LEVELS ? 'Congratulations! Next Level Unlocked!' : 'Mastered! All levels cleared!';
+            const isLastLevel = state.currentLevel >= TOTAL_LEVELS;
+            if (!isLastLevel) playSound('levelUp');
+            unlockMsg.textContent = isLastLevel ? 'Mastered! All levels cleared!' : 'Congratulations! Next Level Unlocked!';
         } else {
             unlockMsg.textContent = `You need ${SCORE_TO_UNLOCK_NEXT_LEVEL} correct answers to unlock the next level.`;
         }
@@ -306,6 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        playSound('click');
         state.userProgress.totalHints--;
         state.quiz.hintUsedThisQuestion = true;
         saveProgress();
@@ -325,11 +381,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function handleNextQuestion() {
+        playSound('click');
         if (state.quiz.currentQuestionIndex < state.quiz.questions.length - 1) {
             state.quiz.currentQuestionIndex++;
             state.quiz.selectedAnswer = null;
             state.quiz.answerSubmitted = false;
-            state.quiz.hintUsedThisQuestion = false; // Reset for next question
+            state.quiz.hintUsedThisQuestion = false;
             renderQuizQuestion();
         } else {
             if (!state.isGuest) {
@@ -376,6 +433,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INITIALIZATION ---
     function init() {
+        document.body.addEventListener('click', initAudio, { once: true });
+        
         const themeToggleButton = document.getElementById('theme-toggle-btn');
         const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
         const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
@@ -409,20 +468,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         applyInitialTheme();
         
-        if (!state.session) return; // Should have been redirected by auth.js
+        if (!state.session) return;
 
         if (state.session.user === 'guest') {
             state.isGuest = true;
             dom.guestBanner.classList.remove('hidden');
             dom.usernameDisplay.textContent = 'Guest';
             dom.appHeader.style.top = '48px';
-            // The banner is 48px high. Original padding-top is 120px. 120 + 48 = 168.
             dom.mainContent.style.paddingTop = `${120 + 48}px`; 
         } else {
             state.isGuest = false;
             dom.guestBanner.classList.add('hidden');
             dom.usernameDisplay.textContent = state.session.user.username;
-            // Reset styles for registered users
             dom.appHeader.style.top = '';
             dom.mainContent.style.paddingTop = '';
         }
@@ -430,7 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadProgress();
         renderHintCounters();
         
-        document.getElementById('logout-btn').addEventListener('click', window.auth.logout);
+        document.getElementById('logout-btn').addEventListener('click', () => { playSound('click'); window.auth.logout(); });
         dom.quizHintBtn.addEventListener('click', handleHint);
         
         document.addEventListener('click', e => {
@@ -440,13 +497,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'submit-answer-btn': handleAnswerSubmit(); break;
                 case 'next-question-btn': handleNextQuestion(); break;
                 case 'next-level-btn':
+                    playSound('click');
                     state.currentLevel++;
                     navigateTo(Screen.QUIZ);
                     break;
-                case 'retry-btn': navigateTo(Screen.QUIZ); break;
-                case 'topics-btn': navigateTo(Screen.HOME); break;
-                case 'back-to-topics-btn': navigateTo(Screen.HOME); break;
+                case 'retry-btn': playSound('click'); navigateTo(Screen.QUIZ); break;
+                case 'topics-btn': playSound('click'); navigateTo(Screen.HOME); break;
+                case 'back-to-topics-btn': playSound('click'); navigateTo(Screen.HOME); break;
                 case 'start-current-level-btn':
+                    playSound('click');
                     const progress = state.userProgress.topics[state.currentTopic.title] || { highestLevelUnlocked: 1 };
                     state.currentLevel = progress.highestLevelUnlocked;
                     navigateTo(Screen.QUIZ);
@@ -454,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        document.querySelector('.logo').addEventListener('click', () => navigateTo(Screen.HOME));
+        document.querySelector('.logo').addEventListener('click', () => { playSound('click'); navigateTo(Screen.HOME); });
 
         navigateTo(Screen.HOME);
     }
