@@ -51,7 +51,8 @@
                 <form id="signup-form">
                     <div id="signup-error" class="auth-error hidden"></div>
                     <div class="form-group">
-                        <input type="text" id="signup-username" placeholder="Username" required>
+                        <input type="text" id="signup-username" placeholder="Username" required minlength="3">
+                        <div id="username-feedback" class="feedback-text"></div>
                     </div>
                     <div class="form-group">
                         <input type="email" id="signup-email" placeholder="Email" required>

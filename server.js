@@ -56,8 +56,12 @@ app.post('/api/register', async (req, res) => {
 
     const users = await readUsers();
 
-    if (users.find(user => user.email === email)) {
+    if (users.some(user => user.email.toLowerCase() === email.toLowerCase())) {
         return res.status(409).json({ message: 'This email is already registered. Please login instead.' });
+    }
+    
+    if (users.some(user => user.username.toLowerCase() === username.toLowerCase())) {
+        return res.status(409).json({ message: 'This username is already taken. Please choose another one.' });
     }
     
     const userId = Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -80,6 +84,16 @@ app.post('/api/register', async (req, res) => {
     });
 });
 
+app.post('/api/check-username', async (req, res) => {
+    const { username } = req.body;
+    if (!username) {
+        return res.status(400).json({ message: 'Username is required.' });
+    }
+    const users = await readUsers();
+    const isTaken = users.some(user => user.username.toLowerCase() === username.toLowerCase());
+    res.status(200).json({ isAvailable: !isTaken });
+});
+
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
 
@@ -88,7 +102,7 @@ app.post('/api/login', async (req, res) => {
     }
     
     const users = await readUsers();
-    const user = users.find(u => u.email === email);
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
         return res.status(401).json({ message: 'Invalid credentials. Please try again or sign up.' });
@@ -276,6 +290,11 @@ app.post('/api/generate-time-challenge', async (req, res) => {
         res.status(500).json({ message: `Failed to generate quiz. The AI might be busy. Details: ${error.message}` });
     }
 });
+
+app.get('/api/ping', (req, res) => {
+    res.status(200).json({ message: 'pong' });
+});
+
 
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/signup', (req, res) => res.sendFile(path.join(__dirname, 'signup.html')));
