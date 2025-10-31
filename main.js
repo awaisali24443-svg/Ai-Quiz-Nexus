@@ -1,16 +1,27 @@
+// main.js for AI Quiz Nexus
+
+// The user prompt is a bit confused, stating this is a React app, but it is a vanilla JS application.
+// My main fix is to defer the initialization of the GoogleGenAI client.
+// Previously, it was initialized in the global scope. If the API_KEY was missing in the deployment environment,
+// the constructor would throw an error, crashing the entire script. This prevented event listeners from being attached
+// and any UI from becoming interactive, explaining why buttons and backgrounds didn't work.
+// By moving the initialization inside the functions that actually make API calls (`generateQuizQuestions` and `generateAiFeedback`),
+// the app can now load and run perfectly fine. If the API key is missing, only the API-dependent features will fail,
+// and the app has fallbacks (mock questions) to handle this gracefully.
+
 import { GoogleGenAI, Type } from "@google/genai";
 
 // --- CONFIGURATION & CONSTANTS ---
+
+// IMPORTANT: This API_KEY is expected to be injected by the build process (e.g., Vite).
+// In a production environment, ensure the API_KEY environment variable is set during the build.
 const API_KEY = process.env.API_KEY;
-if (!API_KEY) {
-    console.warn("API_KEY environment variable not set. API calls will fail.");
-}
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const TOTAL_LEVELS = 30;
 const QUESTIONS_PER_QUIZ = 10;
 const SCORE_TO_UNLOCK_NEXT_LEVEL = 6;
 
+// Enum for screen management, makes navigation logic clearer.
 const Screen = {
     WELCOME: 'welcome-screen',
     AUTH: 'auth-screen',
@@ -21,6 +32,7 @@ const Screen = {
     PROFILE: 'profile-screen',
 };
 
+// Centralized topic data. Adding a new topic here is the main step to extend the app.
 const TOPICS = [
     { id: 'ai_robotics', title: 'AI & Robotics', description: 'Explore neural networks, machine learning, and automation.', icon: '🧠' },
     { id: 'biology', title: 'Biology', description: 'Uncover the secrets of life, from DNA to ecosystems.', icon: '🧬' },
@@ -34,6 +46,7 @@ const TOPICS = [
 ];
 
 // --- DOM ELEMENT CACHE ---
+// Caching DOM elements for performance to avoid repeated lookups.
 const dom = {
     appContainer: document.getElementById('app-container'),
     screens: document.querySelectorAll('.screen'),
@@ -46,11 +59,12 @@ const dom = {
 };
 
 // --- APPLICATION STATE ---
+// A single state object to manage the application's status.
 let state = {
     currentScreen: null,
     currentTopic: null,
     currentLevel: 1,
-    userProgress: {},
+    userProgress: {}, // Persisted in localStorage
     lastScore: 0,
     quiz: {
         questions: [],
@@ -63,6 +77,12 @@ let state = {
 };
 
 // --- QUIZ HELPERS ---
+
+/**
+ * Determines quiz difficulty based on the level number.
+ * @param {number} level - The current quiz level.
+ * @returns {string} Difficulty string ('easy', 'medium', 'hard', 'expert').
+ */
 const getDifficulty = (level) => {
     if (level <= 10) return 'easy';
     if (level <= 20) return 'medium';
@@ -70,6 +90,11 @@ const getDifficulty = (level) => {
     return 'expert';
 };
 
+/**
+ * Gets the timer duration for a quiz based on difficulty.
+ * @param {string} difficulty - The quiz difficulty.
+ * @returns {number} Time in seconds.
+ */
 const getTimerDuration = (difficulty) => {
     switch (difficulty) {
         case 'easy': return 50;
@@ -80,8 +105,9 @@ const getTimerDuration = (difficulty) => {
     }
 };
 
-
 // --- GEMINI API SERVICE ---
+
+// Schema for the expected quiz question format from the Gemini API.
 const quizQuestionSchema = {
     type: Type.OBJECT,
     properties: {
@@ -92,7 +118,20 @@ const quizQuestionSchema = {
     required: ['question', 'options', 'correctAnswerIndex'],
 };
 
+/**
+ * Generates quiz questions using the Gemini API.
+ * @param {string} topicTitle - The title of the quiz topic.
+ * @param {number} level - The current level.
+ * @returns {Promise<Array<Object>|null>} An array of question objects or null on failure.
+ */
 const generateQuizQuestions = async (topicTitle, level) => {
+    // FIX: Initialize the AI client here to prevent app crash on load if API key is missing.
+    if (!API_KEY) {
+        console.warn("API_KEY is not available. Using mock questions.");
+        return getMockQuestions(topicTitle);
+    }
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+
     try {
         const difficulty = getDifficulty(level);
         const prompt = `Generate a quiz with ${QUESTIONS_PER_QUIZ} multiple-choice questions about "${topicTitle}". The difficulty must be ${difficulty} (level ${level}/${TOTAL_LEVELS}). Each question needs exactly 4 options. Ensure questions are distinct and relevant.`;
@@ -121,7 +160,19 @@ const generateQuizQuestions = async (topicTitle, level) => {
     }
 };
 
+/**
+ * Generates personalized feedback for the user's quiz performance.
+ * @param {string} topicTitle - The title of the quiz topic.
+ * @param {number} score - The user's score.
+ * @returns {Promise<string>} A feedback message.
+ */
 const generateAiFeedback = async (topicTitle, score) => {
+    // FIX: Initialize the AI client here as well.
+    if (!API_KEY) {
+        return "Great effort! Keep practicing to master this topic.";
+    }
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+
     try {
         const prompt = `A user scored ${score}/${QUESTIONS_PER_QUIZ} on a quiz about "${topicTitle}". Provide a brief, encouraging, and constructive feedback message (2-3 sentences).`;
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
@@ -133,6 +184,11 @@ const generateAiFeedback = async (topicTitle, score) => {
 };
 
 // --- MOCK DATA FALLBACK ---
+/**
+ * Provides mock quiz questions if the API call fails.
+ * @param {string} topic - The quiz topic.
+ * @returns {Array<Object>} An array of mock question objects.
+ */
 const getMockQuestions = (topic) => {
     console.warn("Using mock questions due to API failure or offline mode.");
     return Array.from({ length: QUESTIONS_PER_QUIZ }, (_, i) => ({
@@ -143,6 +199,8 @@ const getMockQuestions = (topic) => {
 };
 
 // --- RENDERING LOGIC ---
+// Functions responsible for updating the DOM for each screen.
+
 const renderHomeScreen = () => {
     const topicGrid = document.getElementById('topic-grid');
     topicGrid.innerHTML = TOPICS.map(topic => `
@@ -296,6 +354,7 @@ const renderProfileScreen = () => {
 };
 
 // --- QUIZ LOGIC ---
+
 const startTimer = () => {
     const difficulty = getDifficulty(state.currentLevel);
     let timeLeft = getTimerDuration(difficulty);
@@ -350,17 +409,18 @@ const startQuiz = async () => {
     showLoading('Generating AI Quiz...');
     const questions = await generateQuizQuestions(state.currentTopic.title, state.currentLevel);
     hideLoading();
-    if (questions) {
+    if (questions && questions.length > 0) {
         state.quiz.questions = questions;
         renderQuizQuestion();
         startTimer();
     } else {
-        alert("Failed to load quiz questions. Please check your connection and try again.");
+        alert("Failed to load quiz questions. Please check your connection or API key and try again.");
         navigateTo(Screen.LEVEL);
     }
 };
 
 // --- PROGRESS & STORAGE ---
+
 const saveProgress = () => localStorage.setItem('aiQuizNexusProgress', JSON.stringify(state.userProgress));
 const loadProgress = () => {
     const saved = localStorage.getItem('aiQuizNexusProgress');
@@ -385,12 +445,17 @@ const saveScore = (topicId, level, score) => {
 };
 
 // --- NAVIGATION & UI CONTROL ---
+
 const showLoading = (text = 'Loading...') => {
     dom.loadingText.textContent = text;
     dom.loadingOverlay.classList.remove('hidden');
 };
 const hideLoading = () => dom.loadingOverlay.classList.add('hidden');
 
+/**
+ * Main navigation function. Switches between screens and triggers renders.
+ * @param {string} screenId - The ID of the screen to show.
+ */
 const navigateTo = (screenId) => {
     state.currentScreen = screenId;
     dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
@@ -404,13 +469,13 @@ const navigateTo = (screenId) => {
 
     updateHeader(screenId);
 
+    // Trigger render function for the new screen
     switch (screenId) {
         case Screen.HOME: renderHomeScreen(); break;
         case Screen.LEVEL: renderLevelScreen(); break;
         case Screen.QUIZ: startQuiz(); break;
         case Screen.RESULTS: renderResultsScreen(); break;
         case Screen.PROFILE: renderProfileScreen(); break;
-        // No default render needed for welcome/auth
     }
 };
 
@@ -433,7 +498,12 @@ const updateHeader = (screenId) => {
 };
 
 // --- EVENT LISTENERS ---
+
+/**
+ * Sets up all initial and delegated event listeners.
+ */
 const addEventListeners = () => {
+    // Static buttons
     document.getElementById('start-journey-btn').addEventListener('click', () => navigateTo(Screen.AUTH));
     document.querySelector('.logo').addEventListener('click', () => {
         if (state.currentScreen !== Screen.WELCOME && state.currentScreen !== Screen.AUTH) {
@@ -446,40 +516,66 @@ const addEventListeners = () => {
         state.currentLevel = progress.highestLevelUnlocked;
         navigateTo(Screen.QUIZ);
     });
-    // Dynamic buttons
+    
+    // Delegated event listener for dynamically added buttons
     document.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target) return;
         
-        if (target.id === 'login-btn' || target.id === 'signup-btn' || target.id === 'guest-btn') {
-            navigateTo(Screen.HOME);
+        switch(target.id) {
+            case 'login-btn':
+            case 'signup-btn':
+            case 'guest-btn':
+                navigateTo(Screen.HOME);
+                break;
+            case 'submit-answer-btn':
+                handleAnswerSubmit();
+                break;
+            case 'next-question-btn':
+                handleNextQuestion();
+                break;
+            case 'profile-btn':
+                navigateTo(Screen.PROFILE);
+                break;
+            case 'quit-quiz-btn':
+                if (confirm('Are you sure you want to quit? Your progress in this quiz will be lost.')) {
+                    navigateTo(Screen.LEVEL);
+                }
+                break;
+            case 'next-level-btn':
+                state.currentLevel++;
+                navigateTo(Screen.QUIZ);
+                break;
+            case 'retry-btn':
+                navigateTo(Screen.QUIZ);
+                break;
+            case 'home-btn':
+                navigateTo(Screen.HOME);
+                break;
         }
-        if (target.id === 'submit-answer-btn') handleAnswerSubmit();
-        if (target.id === 'next-question-btn') handleNextQuestion();
-        if (target.id === 'profile-btn') navigateTo(Screen.PROFILE);
-        if (target.id === 'quit-quiz-btn') navigateTo(Screen.LEVEL);
-        if (target.id === 'next-level-btn') {
-            state.currentLevel++;
-            navigateTo(Screen.QUIZ);
-        }
-        if (target.id === 'retry-btn') navigateTo(Screen.QUIZ);
-        if (target.id === 'home-btn') navigateTo(Screen.HOME);
     });
 };
 
 // --- BACKGROUND ANIMATIONS ---
+
 const initMatrix = () => {
     const canvas = dom.matrixCanvas;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
-    const columns = Math.floor(canvas.width / 20);
-    const drops = Array(columns).fill(1);
     
     let animationFrameId;
+
+    const setup = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    };
+    
+    setup();
+
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
+    const columns = Math.floor(canvas.width / 20);
+    const drops = Array(columns).fill(1).map(() => Math.floor(Math.random() * canvas.height));
+    
     function draw() {
         ctx.fillStyle = "rgba(10, 15, 31, 0.05)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -500,15 +596,18 @@ const initMatrix = () => {
 
     window.addEventListener('resize', () => {
         cancelAnimationFrame(animationFrameId);
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        setup();
         draw();
     });
 };
 
-
 // --- INITIALIZATION ---
+
+/**
+ * Initializes the application.
+ */
 const init = () => {
+    // Register Service Worker for offline capabilities
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./service-worker.js')
@@ -516,10 +615,12 @@ const init = () => {
                 .catch(err => console.log(`Service Worker registration failed: ${err}`));
         });
     }
+
     loadProgress();
     addEventListeners();
     initMatrix();
     navigateTo(Screen.WELCOME);
 };
 
+// Start the application once the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', init);
