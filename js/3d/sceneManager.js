@@ -1,3 +1,4 @@
+
 // Caches the loaded modules to avoid re-fetching
 const sceneModulesCache = new Map();
 

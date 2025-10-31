@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dom = {
         screens: document.querySelectorAll('.screen'),
         appContainer: document.getElementById('app-container'),
+        webglContainer: document.getElementById('webgl-container'),
         loadingOverlay: document.getElementById('loading-overlay'),
         loadingText: document.getElementById('loading-text'),
         usernameDisplay: document.getElementById('username-display'),
@@ -288,14 +289,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3D & BACKGROUNDS ---
     function updateBackground(topicId = null) {
         if (state.is3DMode) {
+            dom.appContainer.className = ''; // remove 2d bg classes
             if (topicId) {
-                sceneManager.init(topicId, document.getElementById('webgl-container'));
+                sceneManager.init(topicId, dom.webglContainer);
             } else {
                 sceneManager.destroy();
             }
         } else {
-            // Fallback to CSS backgrounds
-            dom.appContainer.classList.toggle('bg-default', !topicId);
+            sceneManager.destroy();
+            dom.appContainer.className = 'bg-default'; // Always show default grid in 2D
         }
     }
     
@@ -307,12 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
         update3DToggleButton();
         updateBackground(state.currentTopic ? state.currentTopic.id : null);
         
-        if (!enabled) {
-            sceneManager.destroy();
-            showToast('3D visuals disabled.');
-        } else {
-            showToast('3D visuals enabled.');
-        }
+        showToast(`3D visuals ${enabled ? 'enabled' : 'disabled'}.`);
     }
 
     function update3DToggleButton() {
@@ -349,6 +346,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 navigateTo(Screen.LEVEL);
             });
         });
+
+        gsap.fromTo('.topic-card', 
+            { opacity: 0, y: 40, scale: 0.95 },
+            { 
+                opacity: 1, 
+                y: 0, 
+                scale: 1,
+                duration: 0.5, 
+                stagger: 0.07, 
+                ease: 'power2.out' 
+            }
+        );
     }
 
     function renderLevelScreen() {
