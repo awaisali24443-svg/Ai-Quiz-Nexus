@@ -46,7 +46,8 @@ let state = {
     currentScreen: null,
     currentTopic: null,
     currentLevel: 1,
-    userProgress: {}, // Persisted in localStorage
+    currentUser: null, // Holds user object {name, email}, "guest", or null
+    userProgress: {}, // Persisted in localStorage, keyed by user
     lastScore: 0,
     quiz: {
         questions: [],
@@ -55,6 +56,83 @@ let state = {
         score: 0,
         answerSubmitted: false,
         timerId: null,
+    }
+};
+
+// --- AUTHENTICATION LOGIC ---
+const auth = {
+    async login(email, password) {
+        showLoading('Logging in...');
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            this.onLoginSuccess(data);
+        } catch (error) {
+            document.getElementById('login-error').textContent = error.message;
+            document.getElementById('login-error').classList.remove('hidden');
+        } finally {
+            hideLoading();
+        }
+    },
+    async register(name, email, password) {
+        showLoading('Creating account...');
+        try {
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message);
+            // Automatically log in after successful registration
+            this.onLoginSuccess(data);
+        } catch (error) {
+            document.getElementById('signup-error').textContent = error.message;
+            document.getElementById('signup-error').classList.remove('hidden');
+        } finally {
+            hideLoading();
+        }
+    },
+    loginAsGuest() {
+        this.onLoginSuccess('guest');
+    },
+    // This is a mock of Google Sign-In for demonstration.
+    // A real implementation would require the Google API client library.
+    loginWithGoogle() {
+        showLoading('Signing in with Google...');
+        setTimeout(() => {
+            const mockUser = { name: 'Google User', email: 'google.user@example.com' };
+            this.onLoginSuccess(mockUser);
+            hideLoading();
+        }, 1000);
+    },
+    logout() {
+        state.currentUser = null;
+        state.userProgress = {};
+        localStorage.removeItem('aiQuizNexusUser');
+        navigateTo(Screen.AUTH);
+    },
+    onLoginSuccess(user) {
+        state.currentUser = user;
+        // Persist user session across reloads
+        localStorage.setItem('aiQuizNexusUser', JSON.stringify(user));
+        loadProgress(); // Load progress for the newly logged-in user
+        navigateTo(Screen.HOME);
+    },
+    init() {
+        const savedUser = localStorage.getItem('aiQuizNexusUser');
+        if (savedUser) {
+            state.currentUser = JSON.parse(savedUser);
+            loadProgress();
+            navigateTo(Screen.HOME);
+        } else {
+            navigateTo(Screen.WELCOME);
+        }
     }
 };
 
@@ -84,16 +162,10 @@ function shuffleArray(array) {
     return array;
 }
 
-
 // --- QUIZ CONTENT SERVICE ---
-
-const generateQuizQuestions = async (topicTitle, level) => {
-    // Always use local questions as API has been removed.
-    return getLocalQuizQuestions(topicTitle, level);
-};
+const generateQuizQuestions = async (topicTitle, level) => getLocalQuizQuestions(topicTitle, level);
 
 const generateAiFeedback = async (topicTitle, score) => {
-    // Static feedback is provided since API is removed.
     if (score >= 8) {
         return `Excellent work on the ${topicTitle} quiz! A score of ${score}/${QUESTIONS_PER_QUIZ} is impressive. You have a strong grasp of the subject!`;
     } else if (score >= SCORE_TO_UNLOCK_NEXT_LEVEL) {
@@ -103,31 +175,55 @@ const generateAiFeedback = async (topicTitle, score) => {
     }
 };
 
-// --- LOCAL DATA ---
 const getLocalQuizQuestions = (topicTitle, level) => {
-    console.log(`Using local questions for ${topicTitle} - Level ${level}.`);
     if (localQuestions[topicTitle] && localQuestions[topicTitle][level]) {
         const levelQuestions = [...localQuestions[topicTitle][level]];
         const shuffled = shuffleArray(levelQuestions).slice(0, QUESTIONS_PER_QUIZ);
-
-        // Convert question format to match the one expected by the renderer
         return shuffled.map(q => {
             const options = shuffleArray([...q.options]);
             const correctIndex = options.findIndex(opt => opt === q.answer);
-            return {
-                question: q.q,
-                options: options,
-                correctAnswerIndex: correctIndex,
-            };
+            return { question: q.q, options: options, correctAnswerIndex: correctIndex };
         });
     }
     console.error(`No local questions found for topic "${topicTitle}" at level ${level}.`);
     return null;
 };
 
+// --- PROGRESS & STORAGE ---
+const getStorageKey = () => {
+    const user = state.currentUser;
+    if (user && typeof user === 'object' && user.email) {
+        return `aiQuizNexusProgress_${user.email}`;
+    }
+    return `aiQuizNexusProgress_guest`;
+};
+
+const saveProgress = () => localStorage.setItem(getStorageKey(), JSON.stringify(state.userProgress));
+
+const loadProgress = () => {
+    const key = getStorageKey();
+    const saved = localStorage.getItem(key);
+    state.userProgress = saved ? JSON.parse(saved) : {};
+};
+
+const unlockNextLevel = (topicTitle, completedLevel) => {
+    const progress = state.userProgress[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
+    if (completedLevel === progress.highestLevelUnlocked && completedLevel < TOTAL_LEVELS) {
+        progress.highestLevelUnlocked++;
+    }
+    state.userProgress[topicTitle] = progress;
+    saveProgress();
+};
+
+const saveScore = (topicTitle, level, score) => {
+    const progress = state.userProgress[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
+    progress.scores = progress.scores || {};
+    progress.scores[level] = Math.max(progress.scores[level] || 0, score);
+    state.userProgress[topicTitle] = progress;
+    saveProgress();
+};
 
 // --- RENDERING LOGIC ---
-
 const renderHomeScreen = () => {
     const topicGrid = document.getElementById('topic-grid');
     topicGrid.innerHTML = TOPICS.map(topic => `
@@ -137,8 +233,7 @@ const renderHomeScreen = () => {
             <p>${topic.description}</p>
         </div>
     `).join('');
-
-    document.querySelectorAll('.topic-card').forEach(card => {
+    topicGrid.querySelectorAll('.topic-card').forEach(card => {
         card.addEventListener('click', () => {
             state.currentTopic = TOPICS.find(t => t.id === card.dataset.topicId);
             navigateTo(Screen.LEVEL);
@@ -150,10 +245,8 @@ const renderLevelScreen = () => {
     document.getElementById('level-topic-title').textContent = state.currentTopic.title;
     const progress = state.userProgress[state.currentTopic.title] || { highestLevelUnlocked: 1 };
     const completion = Math.floor(((progress.highestLevelUnlocked - 1) / TOTAL_LEVELS) * 100);
-
     document.getElementById('level-progress-text').textContent = `Level ${progress.highestLevelUnlocked} of ${TOTAL_LEVELS} (${completion}%)`;
     document.getElementById('level-progress-bar').style.width = `${completion}%`;
-
     const levelGrid = document.getElementById('level-grid');
     levelGrid.innerHTML = Array.from({ length: TOTAL_LEVELS }, (_, i) => {
         const level = i + 1;
@@ -164,47 +257,38 @@ const renderLevelScreen = () => {
             <div class="level-btn ${statusClass}" data-level="${level}">
                 <div class="level-number">${level}</div>
                 <div class="level-status">${isCompleted ? 'Done' : isUnlocked ? 'Open' : 'Locked'}</div>
-            </div>
-        `;
+            </div>`;
     }).join('');
-    
     levelGrid.querySelectorAll('.unlocked, .completed').forEach(btn => {
         btn.addEventListener('click', () => {
             state.currentLevel = parseInt(btn.dataset.level, 10);
             navigateTo(Screen.QUIZ);
         });
     });
-
     document.getElementById('current-level-text').textContent = progress.highestLevelUnlocked;
 };
 
 const renderQuizQuestion = () => {
     const { questions, currentQuestionIndex } = state.quiz;
     const question = questions[currentQuestionIndex];
-    
     document.getElementById('question-counter').textContent = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
     document.getElementById('quiz-progress-bar').style.width = `${((currentQuestionIndex + 1) / questions.length) * 100}%`;
     document.getElementById('question-text').textContent = question.question;
-
     const optionsContainer = document.getElementById('options-container');
-    optionsContainer.innerHTML = ''; // Clear previous options
-
+    optionsContainer.innerHTML = '';
     question.options.forEach((option, index) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.dataset.index = String(index);
         btn.textContent = option;
-        
         btn.addEventListener('click', () => {
             if (state.quiz.answerSubmitted) return;
             state.quiz.selectedAnswer = parseInt(btn.dataset.index, 10);
             document.querySelectorAll('.option-btn.selected').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
         });
-        
         optionsContainer.appendChild(btn);
     });
-
     document.getElementById('quiz-action-buttons').innerHTML = `<button id="submit-answer-btn" class="btn btn-primary">Submit</button>`;
 };
 
@@ -213,66 +297,55 @@ const renderQuizResult = () => {
     const { questions, currentQuestionIndex, selectedAnswer } = state.quiz;
     const question = questions[currentQuestionIndex];
     const isCorrect = selectedAnswer === question.correctAnswerIndex;
-    if(isCorrect) state.quiz.score++;
-
+    if (isCorrect) state.quiz.score++;
     document.querySelectorAll('.option-btn').forEach((btn) => {
         const index = parseInt(btn.dataset.index, 10);
         btn.disabled = true;
         if (index === question.correctAnswerIndex) btn.classList.add('correct');
         else if (index === selectedAnswer) btn.classList.add('incorrect');
     });
-
     const nextText = currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Finish Quiz';
     document.getElementById('quiz-action-buttons').innerHTML = `<button id="next-question-btn" class="btn btn-primary">${nextText}</button>`;
 };
 
-const animateCounter = (element, targetValue, duration = 1000) => {
-    if (targetValue === 0) {
-        element.textContent = 0;
-        return;
-    }
-    let startTimestamp = null;
-    const step = (timestamp) => {
-        if (!startTimestamp) startTimestamp = timestamp;
-        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        element.textContent = String(Math.floor(progress * targetValue));
-        if (progress < 1) {
-            window.requestAnimationFrame(step);
-        }
-    };
-    window.requestAnimationFrame(step);
-};
-
 const renderResultsScreen = () => {
     document.getElementById('results-topic-text').textContent = `Performance for ${state.currentTopic.title} - Level ${state.currentLevel}`;
-    
-    const finalScoreEl = document.getElementById('final-score-value');
-    animateCounter(finalScoreEl, state.lastScore, 1000);
-
+    document.getElementById('final-score-value').textContent = String(state.lastScore);
     document.getElementById('total-questions-value').textContent = String(QUESTIONS_PER_QUIZ);
     document.getElementById('correct-answers').textContent = String(state.lastScore);
     document.getElementById('incorrect-answers').textContent = String(QUESTIONS_PER_QUIZ - state.lastScore);
-
     const unlocked = state.lastScore >= SCORE_TO_UNLOCK_NEXT_LEVEL;
     const unlockMsg = document.getElementById('unlock-message');
     unlockMsg.classList.toggle('hidden', !unlocked);
-    if(unlocked) {
+    if (unlocked) {
         unlockMsg.textContent = state.currentLevel < TOTAL_LEVELS ? 'Level Unlocked!' : 'All Levels Cleared!';
         triggerConfetti();
     }
-    
     document.getElementById('results-action-buttons').innerHTML = `
         ${unlocked && state.currentLevel < TOTAL_LEVELS ? '<button id="next-level-btn" class="btn btn-primary">Next Level</button>' : ''}
         <button id="retry-btn" class="btn btn-secondary">Retry Level</button>
-        <button id="home-btn" class="btn btn-secondary">Topics</button>
-    `;
-
+        <button id="home-btn" class="btn btn-secondary">Topics</button>`;
     const feedbackText = document.getElementById('ai-feedback-text');
     feedbackText.textContent = 'Generating feedback...';
     generateAiFeedback(state.currentTopic.title, state.lastScore).then(fb => feedbackText.textContent = fb);
 };
 
 const renderProfileScreen = () => {
+    const user = state.currentUser;
+    const nameEl = document.getElementById('profile-name');
+    const emailEl = document.getElementById('profile-email');
+    const avatarEl = document.getElementById('profile-avatar');
+
+    if (user && typeof user === 'object') {
+        nameEl.textContent = user.name;
+        emailEl.textContent = user.email;
+        avatarEl.textContent = user.name.charAt(0).toUpperCase();
+    } else {
+        nameEl.textContent = 'Guest User';
+        emailEl.textContent = 'Sign up to save your progress permanently.';
+        avatarEl.textContent = 'G';
+    }
+
     const stats = Object.values(state.userProgress).reduce((acc, topic) => {
         const scores = Object.values(topic.scores || {});
         acc.quizzesTaken += scores.length;
@@ -280,12 +353,10 @@ const renderProfileScreen = () => {
         acc.levelsCleared += topic.highestLevelUnlocked - 1;
         return acc;
     }, { quizzesTaken: 0, totalCorrect: 0, levelsCleared: 0 });
-
     const accuracy = stats.quizzesTaken > 0 ? ((stats.totalCorrect / (stats.quizzesTaken * QUESTIONS_PER_QUIZ)) * 100).toFixed(0) : 0;
     document.getElementById('stat-quizzes').textContent = String(stats.quizzesTaken);
     document.getElementById('stat-accuracy').textContent = `${accuracy}%`;
     document.getElementById('stat-levels').textContent = String(stats.levelsCleared);
-
     const container = document.getElementById('profile-progress-container');
     container.innerHTML = TOPICS.map(topic => {
         const progress = state.userProgress[topic.title] || { highestLevelUnlocked: 1 };
@@ -304,26 +375,21 @@ const renderProfileScreen = () => {
 };
 
 // --- QUIZ LOGIC ---
-
 const startTimer = () => {
     stopTimer();
     const difficulty = getDifficulty(state.currentLevel);
     let timeLeft = getTimerDuration(difficulty);
     const timerEl = document.getElementById('time-left');
-
     const updateTimerDisplay = () => {
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
         timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     };
-
     updateTimerDisplay();
     state.quiz.timerId = setInterval(() => {
         timeLeft--;
         updateTimerDisplay();
-        if (timeLeft <= 0) {
-            handleAnswerSubmit();
-        }
+        if (timeLeft <= 0) handleAnswerSubmit();
     }, 1000);
 };
 
@@ -344,7 +410,6 @@ const handleNextQuestion = () => {
     if (state.quiz.currentQuestionIndex < state.quiz.questions.length - 1) {
         const quizBody = document.querySelector('#quiz-screen .quiz-body');
         quizBody.style.animation = 'question-fade-out 0.25s ease-in forwards';
-
         setTimeout(() => {
             state.quiz.currentQuestionIndex++;
             state.quiz.selectedAnswer = null;
@@ -378,53 +443,20 @@ const startQuiz = async () => {
     }
 };
 
-// --- PROGRESS & STORAGE ---
-
-const saveProgress = () => localStorage.setItem('aiQuizNexusProgress', JSON.stringify(state.userProgress));
-const loadProgress = () => {
-    const saved = localStorage.getItem('aiQuizNexusProgress');
-    if (saved) state.userProgress = JSON.parse(saved);
-};
-
-const unlockNextLevel = (topicTitle, completedLevel) => {
-    const progress = state.userProgress[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
-    if (completedLevel === progress.highestLevelUnlocked && completedLevel < TOTAL_LEVELS) {
-        progress.highestLevelUnlocked++;
-    }
-    state.userProgress[topicTitle] = progress;
-    saveProgress();
-};
-
-const saveScore = (topicTitle, level, score) => {
-    const progress = state.userProgress[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
-    progress.scores = progress.scores || {};
-    progress.scores[level] = Math.max(progress.scores[level] || 0, score);
-    state.userProgress[topicTitle] = progress;
-    saveProgress();
-};
 
 // --- THEME MANAGEMENT ---
-
 const applyTheme = (theme) => {
-    if (theme === 'dark') {
-        document.body.classList.add('dark-theme');
-    } else {
-        document.body.classList.remove('dark-theme');
-    }
+    document.body.classList.toggle('dark-theme', theme === 'dark');
     const toggle = document.getElementById('theme-toggle-checkbox');
-    if (toggle) {
-        toggle.checked = theme === 'dark';
-    }
+    if (toggle) toggle.checked = theme === 'dark';
 };
 
 const loadAndApplyTheme = () => {
-    const savedTheme = localStorage.getItem('aiQuizNexusTheme') || 'light'; // Default to light theme
+    const savedTheme = localStorage.getItem('aiQuizNexusTheme') || 'light';
     applyTheme(savedTheme);
 };
 
-
 // --- NAVIGATION & UI CONTROL ---
-
 const showLoading = (text = 'Loading...') => {
     dom.loadingText.textContent = text;
     dom.loadingOverlay.classList.remove('hidden');
@@ -434,16 +466,12 @@ const hideLoading = () => dom.loadingOverlay.classList.add('hidden');
 const navigateTo = (screenId) => {
     state.currentScreen = screenId;
     dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
-    
     const bgClass = state.currentTopic ? `bg-${state.currentTopic.id}` : 'bg-default';
     dom.appContainer.className = bgClass;
-
     const showHeader = screenId !== Screen.WELCOME && screenId !== Screen.AUTH;
     dom.appHeader.classList.toggle('hidden', !showHeader);
     dom.appFooter.classList.toggle('hidden', !showHeader);
-
     updateHeader(screenId);
-
     switch (screenId) {
         case Screen.HOME: renderHomeScreen(); break;
         case Screen.LEVEL: renderLevelScreen(); break;
@@ -455,9 +483,13 @@ const navigateTo = (screenId) => {
 
 const updateHeader = (screenId) => {
     let navHTML = '';
+    const user = state.currentUser;
     if (screenId === Screen.QUIZ) {
         navHTML = `<button id="quit-quiz-btn" class="btn btn-secondary">Quit</button>`;
-    } else if (screenId !== Screen.WELCOME && screenId !== Screen.AUTH) {
+    } else if (screenId !== Screen.WELCOME && screenId !== Screen.AUTH && user) {
+        let avatarContent = user === 'guest' ? 'G' : user.name.charAt(0).toUpperCase();
+        let userName = user === 'guest' ? 'Guest' : user.name;
+        
         navHTML = `
             <nav>
                 <div class="theme-switch-wrapper">
@@ -466,36 +498,58 @@ const updateHeader = (screenId) => {
                         <span class="slider round"></span>
                     </label>
                 </div>
-                <button id="profile-btn" class="btn btn-secondary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    <span>Profile</span>
-                </button>
-                <img src="https://i.pravatar.cc/40?u=aisha" alt="User Avatar" class="avatar" />
-            </nav>
-        `;
+                <div id="header-user-controls">
+                     <button id="profile-btn" class="btn btn-secondary" title="View Profile">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <span>Profile</span>
+                    </button>
+                    <div class="header-avatar" title="${userName}">${avatarContent}</div>
+                    ${(user !== 'guest') ? '<button id="logout-btn">Logout</button>' : ''}
+                </div>
+            </nav>`;
     }
     dom.headerNavContainer.innerHTML = navHTML;
-
-    // Ensure the toggle reflects the current theme after it's been rendered
     const savedTheme = localStorage.getItem('aiQuizNexusTheme') || 'light';
     const toggle = document.getElementById('theme-toggle-checkbox');
-    if (toggle) {
-        toggle.checked = savedTheme === 'dark';
-    }
+    if (toggle) toggle.checked = savedTheme === 'dark';
 };
 
 // --- EVENT LISTENERS ---
-
 const addEventListeners = () => {
     document.getElementById('start-journey-btn').addEventListener('click', () => navigateTo(Screen.AUTH));
     document.querySelector('.logo').addEventListener('click', () => {
-        if (state.currentScreen !== Screen.WELCOME && state.currentScreen !== Screen.AUTH) {
-            navigateTo(Screen.HOME);
-        }
+        if (state.currentUser) navigateTo(Screen.HOME);
     });
     document.getElementById('back-to-topics-btn').addEventListener('click', () => navigateTo(Screen.HOME));
-    
-    // Delegated listener for theme toggle
+
+    // Auth Screen Logic
+    const authFlipper = document.querySelector('.auth-card-flipper');
+    document.getElementById('show-signup').addEventListener('click', (e) => {
+        e.preventDefault();
+        authFlipper.classList.add('is-flipped');
+    });
+    document.getElementById('show-login').addEventListener('click', (e) => {
+        e.preventDefault();
+        authFlipper.classList.remove('is-flipped');
+    });
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        document.getElementById('login-error').classList.add('hidden');
+        const email = e.target.elements['login-email'].value;
+        const password = e.target.elements['login-password'].value;
+        auth.login(email, password);
+    });
+    document.getElementById('signup-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        document.getElementById('signup-error').classList.add('hidden');
+        const name = e.target.elements['signup-name'].value;
+        const email = e.target.elements['signup-email'].value;
+        const password = e.target.elements['signup-password'].value;
+        auth.register(name, email, password);
+    });
+    document.getElementById('google-signin-btn').addEventListener('click', () => auth.loginWithGoogle());
+    document.getElementById('guest-btn').addEventListener('click', () => auth.loginAsGuest());
+
     document.addEventListener('change', (e) => {
         if (e.target.id === 'theme-toggle-checkbox') {
             const newTheme = e.target.checked ? 'dark' : 'light';
@@ -507,85 +561,55 @@ const addEventListeners = () => {
     document.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target) return;
-        
-        switch(target.id) {
-            case 'login-btn':
-            case 'signup-btn':
-            case 'guest-btn':
-                navigateTo(Screen.HOME);
-                break;
+        switch (target.id) {
             case 'start-current-level-btn':
-                {
-                    const progress = state.userProgress[state.currentTopic.title] || { highestLevelUnlocked: 1 };
-                    state.currentLevel = progress.highestLevelUnlocked;
-                    navigateTo(Screen.QUIZ);
-                    break;
-                }
-            case 'submit-answer-btn':
-                handleAnswerSubmit();
+                const progress = state.userProgress[state.currentTopic.title] || { highestLevelUnlocked: 1 };
+                state.currentLevel = progress.highestLevelUnlocked;
+                navigateTo(Screen.QUIZ);
                 break;
-            case 'next-question-btn':
-                handleNextQuestion();
-                break;
-            case 'profile-btn':
-                navigateTo(Screen.PROFILE);
-                break;
+            case 'submit-answer-btn': handleAnswerSubmit(); break;
+            case 'next-question-btn': handleNextQuestion(); break;
+            case 'profile-btn': navigateTo(Screen.PROFILE); break;
+            case 'logout-btn': auth.logout(); break;
             case 'quit-quiz-btn':
-                if (confirm('Are you sure you want to quit? Your progress in this quiz will be lost.')) {
-                    navigateTo(Screen.LEVEL);
-                }
+                if (confirm('Are you sure you want to quit? Your progress in this quiz will be lost.')) navigateTo(Screen.LEVEL);
                 break;
             case 'next-level-btn':
                 state.currentLevel++;
                 navigateTo(Screen.QUIZ);
                 break;
-            case 'retry-btn':
-                navigateTo(Screen.QUIZ);
-                break;
-            case 'home-btn':
-                navigateTo(Screen.HOME);
-                break;
+            case 'retry-btn': navigateTo(Screen.QUIZ); break;
+            case 'home-btn': navigateTo(Screen.HOME); break;
         }
     });
 };
 
-// --- BACKGROUND ANIMATIONS ---
-
+// --- BACKGROUND ANIMATIONS & CONFETTI ---
 const initMatrix = () => {
     const canvas = dom.matrixCanvas;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     let animationFrameId;
-
-    const setup = () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    };
-    
+    const setup = () => canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     setup();
-
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
     const columns = Math.floor(canvas.width / 20);
     const drops = Array(columns).fill(1).map(() => Math.floor(Math.random() * canvas.height));
-    
     function draw() {
         ctx.fillStyle = "rgba(10, 15, 31, 0.05)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#00F6A3"; // Accent green
+        ctx.fillStyle = "#00F6A3";
         ctx.font = "15px monospace";
-
         for (let i = 0; i < drops.length; i++) {
             const text = chars[Math.floor(Math.random() * chars.length)];
             ctx.fillText(text, i * 20, drops[i] * 20);
-            if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
-                drops[i] = 0;
-            }
+            if (drops[i] * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0;
             drops[i]++;
         }
         animationFrameId = requestAnimationFrame(draw);
     }
     draw();
-
     window.addEventListener('resize', () => {
         cancelAnimationFrame(animationFrameId);
         setup();
@@ -593,76 +617,28 @@ const initMatrix = () => {
     });
 };
 
-// --- CONFETTI ANIMATION ---
 const triggerConfetti = () => {
     const canvas = document.getElementById('confetti-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    
     let confettiPieces = [];
     const numberOfPieces = 150;
     const isDarkMode = document.body.classList.contains('dark-theme');
-    const colors = isDarkMode 
-        ? ['#00eaff', '#9B51E0', '#00F6A3', '#FFBD3E']
-        : ['#007bff', '#28a745', '#ffc107', '#6c757d', '#17a2b8'];
-
-    function ConfettiParticle() {
-        this.x = Math.random() * canvas.width;
-        this.y = -20;
-        this.size = Math.random() * 8 + 4;
-        this.color = colors[Math.floor(Math.random() * colors.length)];
-        this.speedX = Math.random() * 3 - 1.5;
-        this.speedY = Math.random() * 3 + 2;
-        this.rotation = Math.random() * 360;
-        this.rotationSpeed = Math.random() * 10 - 5;
-    }
-
-    ConfettiParticle.prototype.update = function() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        this.rotation += this.rotationSpeed;
-    };
-
-    ConfettiParticle.prototype.draw = function() {
-        ctx.save();
-        ctx.translate(this.x + this.size / 2, this.y + this.size / 2);
-        ctx.rotate(this.rotation * Math.PI / 180);
-        ctx.fillStyle = this.color;
-        ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
-        ctx.restore();
-    };
-
-    const createParticles = () => {
-        confettiPieces = [];
-        for (let i = 0; i < numberOfPieces; i++) {
-            confettiPieces.push(new ConfettiParticle());
-        }
-    }
-
-    let animationFrameId;
+    const colors = isDarkMode ? ['#00eaff', '#9B51E0', '#00F6A3', '#FFBD3E'] : ['#007bff', '#28a745', '#ffc107', '#17a2b8'];
+    function ConfettiParticle() { this.x = Math.random() * canvas.width; this.y = -20; this.size = Math.random() * 8 + 4; this.color = colors[Math.floor(Math.random() * colors.length)]; this.speedX = Math.random() * 3 - 1.5; this.speedY = Math.random() * 3 + 2; this.rotation = Math.random() * 360; this.rotationSpeed = Math.random() * 10 - 5; }
+    ConfettiParticle.prototype.update = function () { this.x += this.speedX; this.y += this.speedY; this.rotation += this.rotationSpeed; };
+    ConfettiParticle.prototype.draw = function () { ctx.save(); ctx.translate(this.x + this.size / 2, this.y + this.size / 2); ctx.rotate(this.rotation * Math.PI / 180); ctx.fillStyle = this.color; ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size); ctx.restore(); };
+    confettiPieces = Array.from({ length: numberOfPieces }, () => new ConfettiParticle());
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
         confettiPieces = confettiPieces.filter(p => p.y < canvas.height + 20);
-        
-        confettiPieces.forEach(p => {
-            p.update();
-            p.draw();
-        });
-
-        if (confettiPieces.length > 0) {
-           animationFrameId = requestAnimationFrame(animate);
-        } else {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        confettiPieces.forEach(p => { p.update(); p.draw(); });
+        if (confettiPieces.length > 0) requestAnimationFrame(animate); else ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-    
-    createParticles();
     animate();
 }
-
 
 // --- INITIALIZATION ---
 const init = () => {
@@ -673,16 +649,13 @@ const init = () => {
                 .catch(err => console.log(`Service Worker registration failed: ${err}`));
         });
     }
-
     loadAndApplyTheme();
-    loadProgress();
     addEventListeners();
     initMatrix();
-    navigateTo(Screen.WELCOME);
+    auth.init();
 };
 
 document.addEventListener('DOMContentLoaded', init);
-
 
 // --- LOCAL QUESTIONS DATA ---
 const localQuestions = {};
@@ -691,135 +664,17 @@ function createPlaceholderLevels(topic, baseLevelData) {
     if (!localQuestions[topic]) localQuestions[topic] = {};
     localQuestions[topic][1] = baseLevelData;
     for (let i = 2; i <= 30; i++) {
-        localQuestions[topic][i] = baseLevelData.map(q => ({
-            ...q,
-            q: `(L${i}) ${q.q}`
-        }));
+        localQuestions[topic][i] = baseLevelData.map(q => ({ ...q, q: `(L${i}) ${q.q}` }));
     }
 }
 
-// --- 1. Programming Languages ---
-createPlaceholderLevels("Programming Languages", [
-    { q: "What does HTML stand for?", options: ["Hyper Text Markup Language", "High Tech Modern Language", "Hyperlink and Text Markup Language", "Home Tool Markup Language"], answer: "Hyper Text Markup Language" },
-    { q: "Which language is primarily used for styling web pages?", options: ["HTML", "JQuery", "CSS", "Python"], answer: "CSS" },
-    { q: "What is the correct syntax for a single-line comment in JavaScript?", options: ["// This is a comment", "<!-- This is a comment -->", "# This is a comment", "/* This is a comment */"], answer: "// This is a comment" },
-    { q: "Which company developed JavaScript?", options: ["Microsoft", "Apple", "Netscape", "Google"], answer: "Netscape" },
-    { q: "What keyword is used to declare a variable in JavaScript that cannot be reassigned?", options: ["const", "var", "let", "static"], answer: "const" },
-    { q: "In Python, how do you print 'Hello, World!' to the console?", options: ["console.log('Hello, World!')", "echo 'Hello, World!'", "System.out.println('Hello, World!')", "print('Hello, World!')"], answer: "print('Hello, World!')" },
-    { q: "Which of the following is a dynamically typed language?", options: ["C++", "Java", "Python", "C#"], answer: "Python" },
-    { q: "What does SQL stand for?", options: ["Stylish Question Language", "Structured Query Language", "Statement Query Language", "Simple Question Language"], answer: "Structured Query Language" },
-    { q: "Which tag is used to define an ordered list in HTML?", options: ["<li>", "<ol>", "<ul>", "<list>"], answer: "<ol>" },
-    { q: "What is the file extension for a Python file?", options: [".py", ".pt", ".python", ".px"], answer: ".py" }
-]);
-
-// --- 2. World Knowledge ---
-createPlaceholderLevels("World Knowledge", [
-    { q: "What is the capital of Japan?", options: ["Beijing", "Seoul", "Tokyo", "Bangkok"], answer: "Tokyo" },
-    { q: "Which is the largest planet in our solar system?", options: ["Earth", "Mars", "Jupiter", "Saturn"], answer: "Jupiter" },
-    { q: "What is the longest river in the world?", options: ["Amazon", "Nile", "Yangtze", "Mississippi"], answer: "Nile" },
-    { q: "Who painted the Mona Lisa?", options: ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Claude Monet"], answer: "Leonardo da Vinci" },
-    { q: "How many continents are there?", options: ["5", "6", "7", "8"], answer: "7" },
-    { q: "What is the largest ocean on Earth?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], answer: "Pacific" },
-    { q: "In which country are the pyramids of Giza located?", options: ["Mexico", "Egypt", "Peru", "Sudan"], answer: "Egypt" },
-    { q: "What is the main currency of the United Kingdom?", options: ["Euro", "Dollar", "Pound Sterling", "Yen"], answer: "Pound Sterling" },
-    { q: "Which is the tallest mountain in the world?", options: ["K2", "Kangchenjunga", "Mount Everest", "Lhotse"], answer: "Mount Everest" },
-    { q: "What is the national animal of Australia?", options: ["Koala", "Kangaroo", "Wombat", "Emu"], answer: "Kangaroo" }
-]);
-
-// --- 3. Biological Knowledge ---
-createPlaceholderLevels("Biological Knowledge", [
-    { q: "What is the powerhouse of the cell?", options: ["Nucleus", "Ribosome", "Mitochondrion", "Golgi apparatus"], answer: "Mitochondrion" },
-    { q: "What process do plants use to make their own food?", options: ["Respiration", "Transpiration", "Photosynthesis", "Pollination"], answer: "Photosynthesis" },
-    { q: "What does DNA stand for?", options: ["Deoxyribonucleic Acid", "Dirobonucleic Acid", "Denatured Ribonucleic Acid", "Duonucleic Acid"], answer: "Deoxyribonucleic Acid" },
-    { q: "Which part of the blood is responsible for clotting?", options: ["Red Blood Cells", "White Blood Cells", "Plasma", "Platelets"], answer: "Platelets" },
-    { q: "Humans are examples of which type of animal?", options: ["Reptiles", "Amphibians", "Mammals", "Birds"], answer: "Mammals" },
-    { q: "What is the largest organ in the human body?", options: ["Liver", "Brain", "Heart", "Skin"], answer: "Skin" },
-    { q: "Which gas do plants absorb from the atmosphere?", options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"], answer: "Carbon Dioxide" },
-    { q: "What is the study of fungi called?", options: ["Botany", "Zoology", "Mycology", "Virology"], answer: "Mycology" },
-    { q: "How many bones are in the adult human body?", options: ["206", "212", "198", "220"], answer: "206" },
-    { q: "What are the building blocks of proteins?", options: ["Carbohydrates", "Lipids", "Amino Acids", "Nucleotides"], answer: "Amino Acids" }
-]);
-
-// --- 4. Space and Astronomy ---
-createPlaceholderLevels("Space and Astronomy", [
-    { q: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Mercury"], answer: "Mars" },
-    { q: "What is the name of the galaxy we live in?", options: ["Andromeda", "Triangulum", "Whirlpool", "Milky Way"], answer: "Milky Way" },
-    { q: "What is a light-year a unit of?", options: ["Time", "Distance", "Brightness", "Mass"], answer: "Distance" },
-    { q: "Who was the first human to walk on the Moon?", options: ["Buzz Aldrin", "Yuri Gagarin", "Neil Armstrong", "Michael Collins"], answer: "Neil Armstrong" },
-    { q: "What is the center of our Solar System?", options: ["The Earth", "The Sun", "Jupiter", "A Black Hole"], answer: "The Sun" },
-    { q: "Which planet is famous for its prominent rings?", options: ["Uranus", "Neptune", "Jupiter", "Saturn"], answer: "Saturn" },
-    { q: "What is the name of the force that holds planets in orbit?", options: ["Electromagnetism", "Gravity", "Friction", "The Strong Force"], answer: "Gravity" },
-    { q: "What is a large group of stars, dust, and gas bound together by gravity called?", options: ["A Solar System", "A Constellation", "A Galaxy", "A Nebula"], answer: "A Galaxy" },
-    { q: "Which is the smallest planet in our solar system?", options: ["Mercury", "Pluto", "Mars", "Venus"], answer: "Mercury" },
-    { q: "What is a shooting star?", options: ["A dying star", "A comet", "A meteoroid burning in the atmosphere", "An asteroid"], answer: "A meteoroid burning in the atmosphere" }
-]);
-
-// --- 5. Technology and AI ---
-createPlaceholderLevels("Technology and AI", [
-    { q: "What does 'AI' stand for?", options: ["Automated Intelligence", "Artificial Intelligence", "Algorithmic Interface", "Advanced Intellect"], answer: "Artificial Intelligence" },
-    { q: "Who is considered the 'father of Artificial Intelligence'?", options: ["Alan Turing", "John McCarthy", "Geoffrey Hinton", "Tim Berners-Lee"], answer: "John McCarthy" },
-    { q: "What is a 'neural network' in AI inspired by?", options: ["Computer circuits", "The human brain", "Social networks", "Ant colonies"], answer: "The human brain" },
-    { q: "What does CPU stand for?", options: ["Central Processing Unit", "Computer Personal Unit", "Central Processor Unit", "Control Processing Unit"], answer: "Central Processing Unit" },
-    { q: "What is 'Machine Learning'?", options: ["A type of computer hardware", "A field of AI that gives computers the ability to learn without being explicitly programmed", "A new programming language", "A theory that machines can think"], answer: "A field of AI that gives computers the ability to learn without being explicitly programmed" },
-    { q: "Which company developed the Python programming language?", options: ["Google", "Microsoft", "It was an open-source project led by Guido van Rossum", "Facebook"], answer: "It was an open-source project led by Guido van Rossum" },
-    { q: "What does 'IoT' stand for?", options: ["Internet of Technology", "Interface of Things", "Internet of Things", "Internal Object Tracker"], answer: "Internet of Things" },
-    { q: "What is the primary function of a router in a network?", options: ["To store data", "To display web pages", "To connect to the internet", "To direct traffic between devices and networks"], answer: "To direct traffic between devices and networks" },
-    { q: "What is 'cloud computing'?", options: ["Storing data on your personal computer", "Using a network of remote servers hosted on the Internet to store, manage, and process data", "A type of weather forecasting technology", "A new type of laptop"], answer: "Using a network of remote servers hosted on the Internet to store, manage, and process data" },
-    { q: "What does the term 'Big Data' refer to?", options: ["Large hard drives", "Extremely large and complex data sets that cannot be easily managed with traditional data-processing software", "A popular database company", "A type of computer virus"], answer: "Extremely large and complex data sets that cannot be easily managed with traditional data-processing software" }
-]);
-
-// --- 6. History and Geography ---
-createPlaceholderLevels("History and Geography", [
-    { q: "The Great Wall of China was primarily built to protect against invasions from which group?", options: ["The Romans", "The Mongols", "The Japanese", "The Vikings"], answer: "The Mongols" },
-    { q: "In which country would you find the ancient city of Machu Picchu?", options: ["Brazil", "Mexico", "Peru", "Colombia"], answer: "Peru" },
-    { q: "World War I took place between which years?", options: ["1905-1910", "1914-1918", "1929-1935", "1939-1945"], answer: "1914-1918" },
-    { q: "The Amazon River flows through which continent?", options: ["Africa", "Asia", "North America", "South America"], answer: "South America" },
-    { q: "Who was the first President of the United States?", options: ["Thomas Jefferson", "Abraham Lincoln", "George Washington", "John Adams"], answer: "George Washington" },
-    { q: "The Sahara Desert is located on which continent?", options: ["Australia", "Asia", "Africa", "South America"], answer: "Africa" },
-    { q: "The Renaissance, a period of great cultural change and artistic activity, began in which country?", options: ["France", "Spain", "Greece", "Italy"], answer: "Italy" },
-    { q: "Which country is known as the 'Land of the Rising Sun'?", options: ["China", "South Korea", "Japan", "Thailand"], answer: "Japan" },
-    { q: "The ancient Roman civilization was centered in what present-day country?", options: ["Greece", "Egypt", "Turkey", "Italy"], answer: "Italy" },
-    { q: "What is the capital of Canada?", options: ["Toronto", "Vancouver", "Montreal", "Ottawa"], answer: "Ottawa" }
-]);
-
-// --- 7. Mathematics and Logic ---
-createPlaceholderLevels("Mathematics and Logic", [
-    { q: "What is the value of Pi to two decimal places?", options: ["3.12", "3.14", "3.16", "3.18"], answer: "3.14" },
-    { q: "What is 12 multiplied by 12?", options: ["144", "124", "169", "132"], answer: "144" },
-    { q: "How many sides does a hexagon have?", options: ["5", "6", "7", "8"], answer: "6" },
-    { q: "What is the square root of 81?", options: ["7", "8", "9", "10"], answer: "9" },
-    { q: "In a right-angled triangle, what is the side opposite the right angle called?", options: ["Adjacent", "Opposite", "Hypotenuse", "Base"], answer: "Hypotenuse" },
-    { q: "If a train travels at 60 mph, how long does it take to travel 120 miles?", options: ["1 hour", "2 hours", "3 hours", "30 minutes"], answer: "2 hours" },
-    { q: "What comes next in the sequence: 2, 4, 8, 16, ...?", options: ["20", "24", "32", "64"], answer: "32" },
-    { q: "What is 5! (5 factorial)?", options: ["25", "60", "120", "720"], answer: "120" },
-    { q: "How many degrees are in a circle?", options: ["180", "270", "360", "450"], answer: "360" },
-    { q: "Which of the following numbers is a prime number?", options: ["9", "15", "21", "23"], answer: "23" }
-]);
-
-// --- 8. Science and Inventions ---
-createPlaceholderLevels("Science and Inventions", [
-    { q: "Who is credited with inventing the telephone?", options: ["Thomas Edison", "Nikola Tesla", "Alexander Graham Bell", "Guglielmo Marconi"], answer: "Alexander Graham Bell" },
-    { q: "What is the chemical symbol for water?", options: ["H2O", "CO2", "O2", "NaCl"], answer: "H2O" },
-    { q: "Who developed the theory of relativity?", options: ["Isaac Newton", "Galileo Galilei", "Albert Einstein", "Stephen Hawking"], answer: "Albert Einstein" },
-    { q: "What does a Geiger counter measure?", options: ["Temperature", "Air pressure", "Radiation", "Light intensity"], answer: "Radiation" },
-    { q: "Who invented the World Wide Web?", options: ["Bill Gates", "Steve Jobs", "Tim Berners-Lee", "Vint Cerf"], answer: "Tim Berners-Lee" },
-    { q: "What is the freezing point of water in Celsius?", options: ["32°C", "0°C", "100°C", "-10°C"], answer: "0°C" },
-    { q: "Which of these is a renewable energy source?", options: ["Natural Gas", "Coal", "Solar Power", "Oil"], answer: "Solar Power" },
-    { q: "What is the hardest natural substance on Earth?", options: ["Gold", "Iron", "Quartz", "Diamond"], answer: "Diamond" },
-    { q: "Who discovered penicillin?", options: ["Marie Curie", "Louis Pasteur", "Alexander Fleming", "Robert Koch"], answer: "Alexander Fleming" },
-    { q: "What force opposes motion between two surfaces in contact?", options: ["Gravity", "Friction", "Magnetism", "Tension"], answer: "Friction" }
-]);
-
-// --- 9. Islamic Knowledge ---
-createPlaceholderLevels("Islamic Knowledge", [
-    { q: "How many pillars of Islam are there?", options: ["3", "4", "5", "6"], answer: "5" },
-    { q: "What is the holy book of Islam?", options: ["Torah", "Bible", "Quran", "Zabur"], answer: "Quran" },
-    { q: "In which city was Prophet Muhammad (PBUH) born?", options: ["Madinah", "Jerusalem", "Makkah", "Taif"], answer: "Makkah" },
-    { q: "What is the name of the Islamic month of fasting?", options: ["Shawwal", "Ramadan", "Rajab", "Dhul Hijjah"], answer: "Ramadan" },
-    { q: "Which direction do Muslims face during prayer?", options: ["Towards Jerusalem", "Towards the Kaaba in Makkah", "East", "West"], answer: "Towards the Kaaba in Makkah" },
-    { q: "What is the annual charity payment in Islam called?", options: ["Hajj", "Sawm", "Salah", "Zakat"], answer: "Zakat" },
-    { q: "Who was the first Caliph after Prophet Muhammad (PBUH)?", options: ["Umar ibn al-Khattab", "Ali ibn Abi Talib", "Uthman ibn Affan", "Abu Bakr al-Siddiq"], answer: "Abu Bakr al-Siddiq" },
-    { q: "How many times a day are Muslims required to pray?", options: ["3", "4", "5", "6"], answer: "5" },
-    { q: "What is the pilgrimage to Makkah called?", options: ["Umrah", "Ziyarah", "Hajj", "Tawaf"], answer: "Hajj" },
-    { q: "Which angel is believed to have delivered the revelations to Prophet Muhammad (PBUH)?", options: ["Mika'il (Michael)", "Israfil (Raphael)", "Jibril (Gabriel)", "Azra'il (Azrael)"], answer: "Jibril (Gabriel)" }
-]);
+// --- Data for all topics ---
+createPlaceholderLevels("Programming Languages", [{ q: "What does HTML stand for?", options: ["Hyper Text Markup Language", "High Tech Modern Language", "Hyperlink and Text Markup Language", "Home Tool Markup Language"], answer: "Hyper Text Markup Language" }, { q: "Which language is primarily used for styling web pages?", options: ["HTML", "JQuery", "CSS", "Python"], answer: "CSS" }, { q: "What is the correct syntax for a single-line comment in JavaScript?", options: ["// This is a comment", "<!-- This is a comment -->", "# This is a comment", "/* This is a comment */"], answer: "// This is a comment" }, { q: "Which company developed JavaScript?", options: ["Microsoft", "Apple", "Netscape", "Google"], answer: "Netscape" }, { q: "What keyword is used to declare a variable in JavaScript that cannot be reassigned?", options: ["const", "var", "let", "static"], answer: "const" }, { q: "In Python, how do you print 'Hello, World!' to the console?", options: ["console.log('Hello, World!')", "echo 'Hello, World!'", "System.out.println('Hello, World!')", "print('Hello, World!')"], answer: "print('Hello, World!')" }, { q: "Which of the following is a dynamically typed language?", options: ["C++", "Java", "Python", "C#"], answer: "Python" }, { q: "What does SQL stand for?", options: ["Stylish Question Language", "Structured Query Language", "Statement Query Language", "Simple Question Language"], answer: "Structured Query Language" }, { q: "Which tag is used to define an ordered list in HTML?", options: ["<li>", "<ol>", "<ul>", "<list>"], answer: "<ol>" }, { q: "What is the file extension for a Python file?", options: [".py", ".pt", ".python", ".px"], answer: ".py" }]);
+createPlaceholderLevels("World Knowledge", [{ q: "What is the capital of Japan?", options: ["Beijing", "Seoul", "Tokyo", "Bangkok"], answer: "Tokyo" }, { q: "Which is the largest planet in our solar system?", options: ["Earth", "Mars", "Jupiter", "Saturn"], answer: "Jupiter" }, { q: "What is the longest river in the world?", options: ["Amazon", "Nile", "Yangtze", "Mississippi"], answer: "Nile" }, { q: "Who painted the Mona Lisa?", options: ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Claude Monet"], answer: "Leonardo da Vinci" }, { q: "How many continents are there?", options: ["5", "6", "7", "8"], answer: "7" }, { q: "What is the largest ocean on Earth?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], answer: "Pacific" }, { q: "In which country are the pyramids of Giza located?", options: ["Mexico", "Egypt", "Peru", "Sudan"], answer: "Egypt" }, { q: "What is the main currency of the United Kingdom?", options: ["Euro", "Dollar", "Pound Sterling", "Yen"], answer: "Pound Sterling" }, { q: "Which is the tallest mountain in the world?", options: ["K2", "Kangchenjunga", "Mount Everest", "Lhotse"], answer: "Mount Everest" }, { q: "What is the national animal of Australia?", options: ["Koala", "Kangaroo", "Wombat", "Emu"], answer: "Kangaroo" }]);
+createPlaceholderLevels("Biological Knowledge", [{ q: "What is the powerhouse of the cell?", options: ["Nucleus", "Ribosome", "Mitochondrion", "Golgi apparatus"], answer: "Mitochondrion" }, { q: "What process do plants use to make their own food?", options: ["Respiration", "Transpiration", "Photosynthesis", "Pollination"], answer: "Photosynthesis" }, { q: "What does DNA stand for?", options: ["Deoxyribonucleic Acid", "Dirobonucleic Acid", "Denatured Ribonucleic Acid", "Duonucleic Acid"], answer: "Deoxyribonucleic Acid" }, { q: "Which part of the blood is responsible for clotting?", options: ["Red Blood Cells", "White Blood Cells", "Plasma", "Platelets"], answer: "Platelets" }, { q: "Humans are examples of which type of animal?", options: ["Reptiles", "Amphibians", "Mammals", "Birds"], answer: "Mammals" }, { q: "What is the largest organ in the human body?", options: ["Liver", "Brain", "Heart", "Skin"], answer: "Skin" }, { q: "Which gas do plants absorb from the atmosphere?", options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"], answer: "Carbon Dioxide" }, { q: "What is the study of fungi called?", options: ["Botany", "Zoology", "Mycology", "Virology"], answer: "Mycology" }, { q: "How many bones are in the adult human body?", options: ["206", "212", "198", "220"], answer: "206" }, { q: "What are the building blocks of proteins?", options: ["Carbohydrates", "Lipids", "Amino Acids", "Nucleotides"], answer: "Amino Acids" }]);
+createPlaceholderLevels("Space and Astronomy", [{ q: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Mercury"], answer: "Mars" }, { q: "What is the name of the galaxy we live in?", options: ["Andromeda", "Triangulum", "Whirlpool", "Milky Way"], answer: "Milky Way" }, { q: "What is a light-year a unit of?", options: ["Time", "Distance", "Brightness", "Mass"], answer: "Distance" }, { q: "Who was the first human to walk on the Moon?", options: ["Buzz Aldrin", "Yuri Gagarin", "Neil Armstrong", "Michael Collins"], answer: "Neil Armstrong" }, { q: "What is the center of our Solar System?", options: ["The Earth", "The Sun", "Jupiter", "A Black Hole"], answer: "The Sun" }, { q: "Which planet is famous for its prominent rings?", options: ["Uranus", "Neptune", "Jupiter", "Saturn"], answer: "Saturn" }, { q: "What is the name of the force that holds planets in orbit?", options: ["Electromagnetism", "Gravity", "Friction", "The Strong Force"], answer: "Gravity" }, { q: "What is a large group of stars, dust, and gas bound together by gravity called?", options: ["A Solar System", "A Constellation", "A Galaxy", "A Nebula"], answer: "A Galaxy" }, { q: "Which is the smallest planet in our solar system?", options: ["Mercury", "Pluto", "Mars", "Venus"], answer: "Mercury" }, { q: "What is a shooting star?", options: ["A dying star", "A comet", "A meteoroid burning in the atmosphere", "An asteroid"], answer: "A meteoroid burning in the atmosphere" }]);
+createPlaceholderLevels("Technology and AI", [{ q: "What does 'AI' stand for?", options: ["Automated Intelligence", "Artificial Intelligence", "Algorithmic Interface", "Advanced Intellect"], answer: "Artificial Intelligence" }, { q: "Who is considered the 'father of Artificial Intelligence'?", options: ["Alan Turing", "John McCarthy", "Geoffrey Hinton", "Tim Berners-Lee"], answer: "John McCarthy" }, { q: "What is a 'neural network' in AI inspired by?", options: ["Computer circuits", "The human brain", "Social networks", "Ant colonies"], answer: "The human brain" }, { q: "What does CPU stand for?", options: ["Central Processing Unit", "Computer Personal Unit", "Central Processor Unit", "Control Processing Unit"], answer: "Central Processing Unit" }, { q: "What is 'Machine Learning'?", options: ["A type of computer hardware", "A field of AI that gives computers the ability to learn without being explicitly programmed", "A new programming language", "A theory that machines can think"], answer: "A field of AI that gives computers the ability to learn without being explicitly programmed" }, { q: "Which company developed the Python programming language?", options: ["Google", "Microsoft", "It was an open-source project led by Guido van Rossum", "Facebook"], answer: "It was an open-source project led by Guido van Rossum" }, { q: "What does 'IoT' stand for?", options: ["Internet of Technology", "Interface of Things", "Internet of Things", "Internal Object Tracker"], answer: "Internet of Things" }, { q: "What is the primary function of a router in a network?", options: ["To store data", "To display web pages", "To connect to the internet", "To direct traffic between devices and networks"], answer: "To direct traffic between devices and networks" }, { q: "What is 'cloud computing'?", options: ["Storing data on your personal computer", "Using a network of remote servers hosted on the Internet to store, manage, and process data", "A type of weather forecasting technology", "A new type of laptop"], answer: "Using a network of remote servers hosted on the Internet to store, manage, and process data" }, { q: "What does the term 'Big Data' refer to?", options: ["Large hard drives", "Extremely large and complex data sets that cannot be easily managed with traditional data-processing software", "A popular database company", "A type of computer virus"], answer: "Extremely large and complex data sets that cannot be easily managed with traditional data-processing software" }]);
+createPlaceholderLevels("History and Geography", [{ q: "The Great Wall of China was primarily built to protect against invasions from which group?", options: ["The Romans", "The Mongols", "The Japanese", "The Vikings"], answer: "The Mongols" }, { q: "In which country would you find the ancient city of Machu Picchu?", options: ["Brazil", "Mexico", "Peru", "Colombia"], answer: "Peru" }, { q: "World War I took place between which years?", options: ["1905-1910", "1914-1918", "1929-1935", "1939-1945"], answer: "1914-1918" }, { q: "The Amazon River flows through which continent?", options: ["Africa", "Asia", "North America", "South America"], answer: "South America" }, { q: "Who was the first President of the United States?", options: ["Thomas Jefferson", "Abraham Lincoln", "George Washington", "John Adams"], answer: "George Washington" }, { q: "The Sahara Desert is located on which continent?", options: ["Australia", "Asia", "Africa", "South America"], answer: "Africa" }, { q: "The Renaissance, a period of great cultural change and artistic activity, began in which country?", options: ["France", "Spain", "Greece", "Italy"], answer: "Italy" }, { q: "Which country is known as the 'Land of the Rising Sun'?", options: ["China", "South Korea", "Japan", "Thailand"], answer: "Japan" }, { q: "The ancient Roman civilization was centered in what present-day country?", options: ["Greece", "Egypt", "Turkey", "Italy"], answer: "Italy" }, { q: "What is the capital of Canada?", options: ["Toronto", "Vancouver", "Montreal", "Ottawa"], answer: "Ottawa" }]);
+createPlaceholderLevels("Mathematics and Logic", [{ q: "What is the value of Pi to two decimal places?", options: ["3.12", "3.14", "3.16", "3.18"], answer: "3.14" }, { q: "What is 12 multiplied by 12?", options: ["144", "124", "169", "132"], answer: "144" }, { q: "How many sides does a hexagon have?", options: ["5", "6", "7", "8"], answer: "6" }, { q: "What is the square root of 81?", options: ["7", "8", "9", "10"], answer: "9" }, { q: "In a right-angled triangle, what is the side opposite the right angle called?", options: ["Adjacent", "Opposite", "Hypotenuse", "Base"], answer: "Hypotenuse" }, { q: "If a train travels at 60 mph, how long does it take to travel 120 miles?", options: ["1 hour", "2 hours", "3 hours", "30 minutes"], answer: "2 hours" }, { q: "What comes next in the sequence: 2, 4, 8, 16, ...?", options: ["20", "24", "32", "64"], answer: "32" }, { q: "What is 5! (5 factorial)?", options: ["25", "60", "120", "720"], answer: "120" }, { q: "How many degrees are in a circle?", options: ["180", "270", "360", "450"], answer: "360" }, { q: "Which of the following numbers is a prime number?", options: ["9", "15", "21", "23"], answer: "23" }]);
+createPlaceholderLevels("Science and Inventions", [{ q: "Who is credited with inventing the telephone?", options: ["Thomas Edison", "Nikola Tesla", "Alexander Graham Bell", "Guglielmo Marconi"], answer: "Alexander Graham Bell" }, { q: "What is the chemical symbol for water?", options: ["H2O", "CO2", "O2", "NaCl"], answer: "H2O" }, { q: "Who developed the theory of relativity?", options: ["Isaac Newton", "Galileo Galilei", "Albert Einstein", "Stephen Hawking"], answer: "Albert Einstein" }, { q: "What does a Geiger counter measure?", options: ["Temperature", "Air pressure", "Radiation", "Light intensity"], answer: "Radiation" }, { q: "Who invented the World Wide Web?", options: ["Bill Gates", "Steve Jobs", "Tim Berners-Lee", "Vint Cerf"], answer: "Tim Berners-Lee" }, { q: "What is the freezing point of water in Celsius?", options: ["32°C", "0°C", "100°C", "-10°C"], answer: "0°C" }, { q: "Which of these is a renewable energy source?", options: ["Natural Gas", "Coal", "Solar Power", "Oil"], answer: "Solar Power" }, { q: "What is the hardest natural substance on Earth?", options: ["Gold", "Iron", "Quartz", "Diamond"], answer: "Diamond" }, { q: "Who discovered penicillin?", options: ["Marie Curie", "Louis Pasteur", "Alexander Fleming", "Robert Koch"], answer: "Alexander Fleming" }, { q: "What force opposes motion between two surfaces in contact?", options: ["Gravity", "Friction", "Magnetism", "Tension"], answer: "Friction" }]);
+createPlaceholderLevels("Islamic Knowledge", [{ q: "How many pillars of Islam are there?", options: ["3", "4", "5", "6"], answer: "5" }, { q: "What is the holy book of Islam?", options: ["Torah", "Bible", "Quran", "Zabur"], answer: "Quran" }, { q: "In which city was Prophet Muhammad (PBUH) born?", options: ["Madinah", "Jerusalem", "Makkah", "Taif"], answer: "Makkah" }, { q: "What is the name of the Islamic month of fasting?", options: ["Shawwal", "Ramadan", "Rajab", "Dhul Hijjah"], answer: "Ramadan" }, { q: "Which direction do Muslims face during prayer?", options: ["Towards Jerusalem", "Towards the Kaaba in Makkah", "East", "West"], answer: "Towards the Kaaba in Makkah" }, { q: "What is the annual charity payment in Islam called?", options: ["Hajj", "Sawm", "Salah", "Zakat"], answer: "Zakat" }, { q: "Who was the first Caliph after Prophet Muhammad (PBUH)?", options: ["Umar ibn al-Khattab", "Ali ibn Abi Talib", "Uthman ibn Affan", "Abu Bakr al-Siddiq"], answer: "Abu Bakr al-Siddiq" }, { q: "How many times a day are Muslims required to pray?", options: ["3", "4", "5", "6"], answer: "5" }, { q: "What is the pilgrimage to Makkah called?", options: ["Umrah", "Ziyarah", "Hajj", "Tawaf"], answer: "Hajj" }, { q: "Which angel is believed to have delivered the revelations to Prophet Muhammad (PBUH)?", options: ["Mika'il (Michael)", "Israfil (Raphael)", "Jibril (Gabriel)", "Azra'il (Azrael)"], answer: "Jibril (Gabriel)" }]);
