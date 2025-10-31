@@ -80,9 +80,9 @@
                             <label for="password">Password</label>
                             <input type="password" id="password" placeholder="••••••••">
                         </div>
-                        <button id="login-btn" class="btn btn-full">Login</button>
-                        <button id="signup-btn" class="btn btn-full">Sign Up</button>
-                        <button id="guest-btn" class="btn">Continue as Guest</button>
+                        <button id="login-btn" class="btn btn-primary btn-full">Login</button>
+                        <button id="signup-btn" class="btn btn-secondary btn-full">Sign Up</button>
+                        <button id="guest-btn" class="btn btn-secondary">Continue as Guest</button>
                     </div>
                 </div>
             </section>
@@ -145,6 +145,7 @@
             
              <!-- Results Screen -->
             <section id="results-screen" class="screen hidden">
+                <canvas id="confetti-canvas"></canvas>
                 <div class="container text-center">
                     <h2 class="screen-title">Level Complete!</h2>
                     <p id="results-topic-text" class="screen-subtitle"></p>

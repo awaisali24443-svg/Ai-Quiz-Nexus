@@ -226,9 +226,29 @@ const renderQuizResult = () => {
     document.getElementById('quiz-action-buttons').innerHTML = `<button id="next-question-btn" class="btn btn-primary">${nextText}</button>`;
 };
 
+const animateCounter = (element, targetValue, duration = 1000) => {
+    if (targetValue === 0) {
+        element.textContent = 0;
+        return;
+    }
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        element.textContent = String(Math.floor(progress * targetValue));
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        }
+    };
+    window.requestAnimationFrame(step);
+};
+
 const renderResultsScreen = () => {
     document.getElementById('results-topic-text').textContent = `Performance for ${state.currentTopic.title} - Level ${state.currentLevel}`;
-    document.getElementById('final-score-value').textContent = String(state.lastScore);
+    
+    const finalScoreEl = document.getElementById('final-score-value');
+    animateCounter(finalScoreEl, state.lastScore, 1000);
+
     document.getElementById('total-questions-value').textContent = String(QUESTIONS_PER_QUIZ);
     document.getElementById('correct-answers').textContent = String(state.lastScore);
     document.getElementById('incorrect-answers').textContent = String(QUESTIONS_PER_QUIZ - state.lastScore);
@@ -236,7 +256,10 @@ const renderResultsScreen = () => {
     const unlocked = state.lastScore >= SCORE_TO_UNLOCK_NEXT_LEVEL;
     const unlockMsg = document.getElementById('unlock-message');
     unlockMsg.classList.toggle('hidden', !unlocked);
-    if(unlocked) unlockMsg.textContent = state.currentLevel < TOTAL_LEVELS ? 'Level Unlocked!' : 'All Levels Cleared!';
+    if(unlocked) {
+        unlockMsg.textContent = state.currentLevel < TOTAL_LEVELS ? 'Level Unlocked!' : 'All Levels Cleared!';
+        triggerConfetti();
+    }
     
     document.getElementById('results-action-buttons').innerHTML = `
         ${unlocked && state.currentLevel < TOTAL_LEVELS ? '<button id="next-level-btn" class="btn btn-primary">Next Level</button>' : ''}
@@ -319,11 +342,17 @@ const handleAnswerSubmit = () => {
 
 const handleNextQuestion = () => {
     if (state.quiz.currentQuestionIndex < state.quiz.questions.length - 1) {
-        state.quiz.currentQuestionIndex++;
-        state.quiz.selectedAnswer = null;
-        state.quiz.answerSubmitted = false;
-        renderQuizQuestion();
-        startTimer();
+        const quizBody = document.querySelector('#quiz-screen .quiz-body');
+        quizBody.style.animation = 'question-fade-out 0.25s ease-in forwards';
+
+        setTimeout(() => {
+            state.quiz.currentQuestionIndex++;
+            state.quiz.selectedAnswer = null;
+            state.quiz.answerSubmitted = false;
+            renderQuizQuestion();
+            startTimer();
+            quizBody.style.animation = 'question-fade-in 0.25s ease-out forwards';
+        }, 250);
     } else {
         state.lastScore = state.quiz.score;
         saveScore(state.currentTopic.title, state.currentLevel, state.quiz.score);
@@ -521,6 +550,74 @@ const initMatrix = () => {
         draw();
     });
 };
+
+// --- CONFETTI ANIMATION ---
+const triggerConfetti = () => {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    let confettiPieces = [];
+    const numberOfPieces = 150;
+    const colors = ['#00eaff', '#9B51E0', '#00F6A3', '#FFBD3E', '#f8fafc'];
+
+    function ConfettiParticle() {
+        this.x = Math.random() * canvas.width;
+        this.y = -20;
+        this.size = Math.random() * 8 + 4;
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+        this.speedX = Math.random() * 3 - 1.5;
+        this.speedY = Math.random() * 3 + 2;
+        this.rotation = Math.random() * 360;
+        this.rotationSpeed = Math.random() * 10 - 5;
+    }
+
+    ConfettiParticle.prototype.update = function() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.rotation += this.rotationSpeed;
+    };
+
+    ConfettiParticle.prototype.draw = function() {
+        ctx.save();
+        ctx.translate(this.x + this.size / 2, this.y + this.size / 2);
+        ctx.rotate(this.rotation * Math.PI / 180);
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
+    };
+
+    const createParticles = () => {
+        confettiPieces = [];
+        for (let i = 0; i < numberOfPieces; i++) {
+            confettiPieces.push(new ConfettiParticle());
+        }
+    }
+
+    let animationFrameId;
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        confettiPieces = confettiPieces.filter(p => p.y < canvas.height + 20);
+        
+        confettiPieces.forEach(p => {
+            p.update();
+            p.draw();
+        });
+
+        if (confettiPieces.length > 0) {
+           animationFrameId = requestAnimationFrame(animate);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+    
+    createParticles();
+    animate();
+}
+
 
 // --- INITIALIZATION ---
 const init = () => {
