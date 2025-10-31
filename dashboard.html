@@ -35,6 +35,7 @@
                      <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme"></button>
                      <div id="user-controls">
                         <span id="username-display"></span>
+                        <span id="hint-counter-display" class="hint-counter"></span>
                         <button id="logout-btn" class="btn btn-secondary">Logout</button>
                     </div>
                 </div>
@@ -75,6 +76,12 @@
                     <div class="quiz-container">
                         <div class="quiz-header">
                             <div id="question-counter">Question X of Y</div>
+                            <button id="hint-btn" class="btn btn-secondary btn-hint hidden" disabled>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A6 6 0 0 1 2 6zm6 8.5a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1h.5a.5.5 0 0 1 .5.5zM.034 6a5.5 5.5 0 1 1 10.932 0A5.5 5.5 0 0 1 .034 6z"/>
+                                </svg>
+                                <span>Hint</span> (<span id="hints-left"></span>)
+                            </button>
                         </div>
                         <div class="progress-bar-container quiz-progress"><div id="quiz-progress-bar" class="progress-bar"></div></div>
                         <div class="quiz-body">

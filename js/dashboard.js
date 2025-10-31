@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
         guestBanner: document.getElementById('guest-banner'),
         appHeader: document.getElementById('app-header'),
         mainContent: document.querySelector('main'),
+        headerHintCounter: document.getElementById('hint-counter-display'),
+        quizHintBtn: document.getElementById('hint-btn'),
+        quizHintsLeft: document.getElementById('hints-left'),
     };
 
     let state = {
@@ -41,7 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
         currentScreen: Screen.HOME,
         currentTopic: null,
         currentLevel: 1,
-        userProgress: {},
+        userProgress: {
+            totalHints: 30,
+            topics: {}
+        },
         quiz: {},
     };
 
@@ -111,30 +117,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const key = getStorageKey();
         if (key) {
             const saved = localStorage.getItem(key);
-            state.userProgress = saved ? JSON.parse(saved) : {};
+            const parsedProgress = saved ? JSON.parse(saved) : {};
+
+            // Migration for old structure
+            if (parsedProgress.totalHints === undefined) {
+                state.userProgress = {
+                    totalHints: 30, // Give existing users 30 hints
+                    topics: parsedProgress
+                };
+                saveProgress(); // Save the new structure back
+            } else {
+                state.userProgress = parsedProgress;
+            }
         } else {
-            state.userProgress = {}; // Reset for guests
+            // Reset for guests or no data
+            state.userProgress = { totalHints: 30, topics: {} };
         }
     }
 
     function unlockNextLevel(topicTitle, completedLevel) {
-        const progress = state.userProgress[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
+        const progress = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
         if (completedLevel === progress.highestLevelUnlocked && completedLevel < TOTAL_LEVELS) {
             progress.highestLevelUnlocked++;
         }
-        state.userProgress[topicTitle] = progress;
+        state.userProgress.topics[topicTitle] = progress;
         saveProgress();
     }
 
     function saveScore(topicTitle, level, score) {
-        const progress = state.userProgress[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
+        const progress = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
         progress.scores = progress.scores || {};
         progress.scores[level] = Math.max(progress.scores[level] || 0, score);
-        state.userProgress[topicTitle] = progress;
+        state.userProgress.topics[topicTitle] = progress;
         saveProgress();
     }
 
     // --- RENDERING LOGIC ---
+    function renderHintCounters() {
+        const hints = state.userProgress.totalHints;
+        dom.headerHintCounter.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A6 6 0 0 1 2 6zm6 8.5a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1h.5a.5.5 0 0 1 .5.5zM.034 6a5.5 5.5 0 1 1 10.932 0A5.5 5.5 0 0 1 .034 6z"/>
+            </svg>
+            <span>${hints} Hints</span>
+        `;
+        dom.quizHintsLeft.textContent = hints;
+    }
+
     function renderHomeScreen() {
         const topicGrid = document.getElementById('topic-grid');
         topicGrid.innerHTML = TOPICS.map(topic => `
@@ -154,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderLevelScreen() {
         document.getElementById('level-topic-title').textContent = state.currentTopic.title;
-        const progress = state.userProgress[state.currentTopic.title] || { highestLevelUnlocked: 1 };
+        const progress = state.userProgress.topics[state.currentTopic.title] || { highestLevelUnlocked: 1 };
         const completion = Math.floor(((progress.highestLevelUnlocked - 1) / TOTAL_LEVELS) * 100);
         document.getElementById('level-progress-text').textContent = `Progress: ${completion}%`;
         document.getElementById('level-progress-bar').style.width = `${completion}%`;
@@ -207,14 +236,22 @@ document.addEventListener('DOMContentLoaded', () => {
             optionsContainer.appendChild(btn);
         });
 
+        dom.quizHintBtn.classList.remove('hidden');
+        const hintsLeft = state.userProgress.totalHints;
+        dom.quizHintsLeft.textContent = hintsLeft;
+        dom.quizHintBtn.disabled = hintsLeft <= 0 || state.quiz.hintUsedThisQuestion;
+
         document.getElementById('quiz-action-buttons').innerHTML = `<button id="submit-answer-btn" class="btn btn-primary">Submit</button>`;
     }
 
     function renderQuizResult() {
-        const { questions, currentQuestionIndex, selectedAnswer } = state.quiz;
+        const { questions, currentQuestionIndex, selectedAnswer, hintUsedThisQuestion } = state.quiz;
         const question = questions[currentQuestionIndex];
         const isCorrect = selectedAnswer === question.answer;
-        if (isCorrect) state.quiz.score++;
+
+        if (isCorrect) {
+            state.quiz.score += hintUsedThisQuestion ? 0.5 : 1;
+        }
 
         document.querySelectorAll('.option-btn').forEach(btn => {
             btn.disabled = true;
@@ -255,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- QUIZ WORKFLOW ---
     function resetQuizState() {
-        state.quiz = { questions: [], currentQuestionIndex: 0, selectedAnswer: null, score: 0, answerSubmitted: false };
+        state.quiz = { questions: [], currentQuestionIndex: 0, selectedAnswer: null, score: 0, answerSubmitted: false, hintUsedThisQuestion: false };
     }
     
     function handleAnswerSubmit() {
@@ -263,12 +300,36 @@ document.addEventListener('DOMContentLoaded', () => {
         state.quiz.answerSubmitted = true;
         renderQuizResult();
     }
+
+    function handleHint() {
+        if (state.userProgress.totalHints <= 0 || state.quiz.hintUsedThisQuestion) {
+            return;
+        }
+        
+        state.userProgress.totalHints--;
+        state.quiz.hintUsedThisQuestion = true;
+        saveProgress();
+        
+        renderHintCounters();
+        dom.quizHintBtn.disabled = true;
+
+        const question = state.quiz.questions[state.quiz.currentQuestionIndex];
+        const optionBtns = Array.from(document.querySelectorAll('.option-btn'));
+        
+        const incorrectOptions = optionBtns.filter(btn => btn.textContent !== question.answer && !btn.classList.contains('selected'));
+        
+        if (incorrectOptions.length > 0) {
+            const optionToDisable = incorrectOptions[Math.floor(Math.random() * incorrectOptions.length)];
+            optionToDisable.classList.add('hint-disabled');
+        }
+    }
     
     function handleNextQuestion() {
         if (state.quiz.currentQuestionIndex < state.quiz.questions.length - 1) {
             state.quiz.currentQuestionIndex++;
             state.quiz.selectedAnswer = null;
             state.quiz.answerSubmitted = false;
+            state.quiz.hintUsedThisQuestion = false; // Reset for next question
             renderQuizQuestion();
         } else {
             if (!state.isGuest) {
@@ -367,8 +428,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         loadProgress();
+        renderHintCounters();
         
         document.getElementById('logout-btn').addEventListener('click', window.auth.logout);
+        dom.quizHintBtn.addEventListener('click', handleHint);
         
         document.addEventListener('click', e => {
             const target = e.target.closest('button');
@@ -384,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'topics-btn': navigateTo(Screen.HOME); break;
                 case 'back-to-topics-btn': navigateTo(Screen.HOME); break;
                 case 'start-current-level-btn':
-                    const progress = state.userProgress[state.currentTopic.title] || { highestLevelUnlocked: 1 };
+                    const progress = state.userProgress.topics[state.currentTopic.title] || { highestLevelUnlocked: 1 };
                     state.currentLevel = progress.highestLevelUnlocked;
                     navigateTo(Screen.QUIZ);
                     break;
