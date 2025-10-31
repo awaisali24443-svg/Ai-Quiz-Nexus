@@ -1,3 +1,4 @@
+
 services:
   - type: web
     name: ai-quiz-nexus
@@ -5,3 +6,6 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: npm start
+    envVars:
+      - key: AIzaSyBQV4YkgryqkR5dsrxpZ17oqUESiIJTXqc
+        sync: false

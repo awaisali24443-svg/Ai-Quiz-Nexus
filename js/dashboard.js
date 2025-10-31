@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const TOTAL_LEVELS = 30;
     const QUESTIONS_PER_QUIZ = 10;
-    const SCORE_TO_UNLOCK_NEXT_LEVEL = 6;
+    const SCORE_TO_UNLOCK_NEXT_LEVEL = 7;
 
     const Screen = {
         HOME: 'home-screen',
@@ -51,6 +51,29 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         quiz: {},
     };
+
+    // --- TOAST NOTIFICATIONS ---
+    function showToast(message, isError = false) {
+        const toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${isError ? 'error' : ''}`;
+        toast.textContent = message;
+
+        toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 100);
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+        }, 4000);
+    }
 
     // --- AUDIO ---
     let audioCtx;
@@ -112,6 +135,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function getQuizQuestions(topicTitle, level) {
+        if (!navigator.onLine) {
+             console.warn('Offline mode detected. Using fallback questions.');
+             return getFallbackQuestions(topicTitle, level);
+        }
         try {
             const response = await fetch('/api/generate-quiz', {
                 method: 'POST',
@@ -119,8 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     topic: topicTitle,
                     level,
-                    questionsPerQuiz: QUESTIONS_PER_QUIZ,
-                    totalLevels: TOTAL_LEVELS
                 }),
             });
 
@@ -136,17 +161,33 @@ document.addEventListener('DOMContentLoaded', () => {
             return shuffleArray(data.questions);
         } catch (error) {
             console.warn(`AI quiz generation failed for topic "${topicTitle}". Error: ${error.message}. Using fallback questions.`);
-            
-            const topic = TOPICS.find(t => t.title === topicTitle);
-            if (!topic || !window.QUIZ_DATA || !window.QUIZ_DATA[topic.id]) {
-                console.error(`No fallback questions available for topic: ${topicTitle}`);
-                throw new Error('Failed to load quiz questions for this topic. Please try again later.');
-            }
-
-            const fallbackSet = window.QUIZ_DATA[topic.id];
-            const shuffledFallbacks = shuffleArray([...fallbackSet]);
-            return shuffledFallbacks.slice(0, QUESTIONS_PER_QUIZ);
+            showToast('⚠️ AI is unavailable. Using offline questions.', true);
+            return getFallbackQuestions(topicTitle, level);
         }
+    }
+
+    function getFallbackQuestions(topicTitle, level) {
+        const topic = TOPICS.find(t => t.title === topicTitle);
+        if (!topic || !window.QUIZ_DATA || !window.QUIZ_DATA[topic.id]) {
+            console.error(`No fallback questions available for topic: ${topicTitle}`);
+            throw new Error('Failed to load quiz questions for this topic. Please try again later.');
+        }
+
+        const topicData = window.QUIZ_DATA[topic.id];
+        let fallbackSet = topicData[`level_${level}`];
+
+        // If specific level data doesn't exist, use level 1 as a last resort
+        if (!fallbackSet || fallbackSet.length === 0) {
+            console.warn(`No fallback for level ${level}. Using level 1.`);
+            fallbackSet = topicData['level_1'] || [];
+        }
+        
+        if (fallbackSet.length === 0) {
+            throw new Error('No fallback questions found for this topic.');
+        }
+
+        const shuffledFallbacks = shuffleArray([...fallbackSet]);
+        return shuffledFallbacks.slice(0, QUESTIONS_PER_QUIZ);
     }
     
     // --- PROGRESS & STORAGE ---
@@ -454,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isLastLevel) playSound('levelUp');
             unlockMsg.textContent = isLastLevel ? 'Mastered! All levels cleared!' : 'Congratulations! Next Level Unlocked!';
         } else {
-            unlockMsg.textContent = `You need ${SCORE_TO_UNLOCK_NEXT_LEVEL} correct answers to unlock the next level.`;
+            unlockMsg.textContent = `You need ${SCORE_TO_UNLOCK_NEXT_LEVEL} correct answers to unlock the next level. Try again.`;
         }
         unlockMsg.classList.remove('hidden');
         
@@ -561,8 +602,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INITIALIZATION ---
     function init() {
+        console.log('✅ Secure AI Integrated | Adaptive Levels Active | Offline Mode Ready');
+        
         document.body.addEventListener('click', initAudio, { once: true });
         handleMatrixBackground();
+        
+        window.addEventListener('online', () => showToast('✅ Back Online — AI Restored.'));
+        window.addEventListener('offline', () => showToast('⚠️ You are in Offline Mode. AI is temporarily unavailable.', true));
         
         const themeToggleButton = document.getElementById('theme-toggle-btn');
         const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;

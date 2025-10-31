@@ -105,10 +105,21 @@ app.post('/api/login', async (req, res) => {
 
 // Generate Quiz with Gemini
 app.post('/api/generate-quiz', async (req, res) => {
-    const { topic, level, questionsPerQuiz, totalLevels } = req.body;
+    const { topic, level } = req.body;
+    const questionsPerQuiz = 10;
+    const totalLevels = 30;
 
     if (!topic || !level) {
         return res.status(400).json({ message: 'Topic and level are required.' });
+    }
+
+    let difficulty;
+    if (level <= 10) {
+        difficulty = 'Easy';
+    } else if (level <= 20) {
+        difficulty = 'Intermediate';
+    } else {
+        difficulty = 'Expert';
     }
 
     const quizSchema = {
@@ -141,7 +152,7 @@ app.post('/api/generate-quiz', async (req, res) => {
         required: ['questions']
     };
 
-    const prompt = `Generate a quiz with ${questionsPerQuiz || 10} multiple-choice questions on the topic of '${topic}'. The difficulty should be appropriate for level ${level} out of ${totalLevels || 30}. A higher level means a harder quiz. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
+    const prompt = `Generate a quiz with ${questionsPerQuiz} multiple-choice questions on the topic of '${topic}'. The difficulty should be '${difficulty}', appropriate for level ${level} out of ${totalLevels}. A higher level means a harder quiz. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
 
     try {
         const response = await ai.models.generateContent({
