@@ -13,7 +13,18 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Initialize Gemini AI
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let ai;
+if (process.env.API_KEY) {
+    try {
+        ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        console.log("✅ Gemini AI Initialized Successfully.");
+    } catch (e) {
+        console.error("🔴 Failed to initialize Gemini AI:", e.message);
+        ai = null;
+    }
+} else {
+    console.warn("⚠️ API_KEY environment variable not set. AI quiz generation will be unavailable.");
+}
 
 const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
@@ -104,6 +115,10 @@ app.post('/api/login', async (req, res) => {
 
 // Generate Quiz with Gemini
 app.post('/api/generate-quiz', async (req, res) => {
+    if (!ai) {
+        return res.status(503).json({ message: 'AI service is not configured on the server. Missing or invalid API_KEY.' });
+    }
+
     const { topic, level } = req.body;
     const questionsPerQuiz = 10;
     const totalLevels = 30;

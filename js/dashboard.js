@@ -1,3 +1,4 @@
+
 import sceneManager from './3d/sceneManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -24,6 +25,19 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'mathematics_logic', title: 'Mathematics', icon: '🧮' },
         { id: 'science_inventions', title: 'Science', icon: '🔬' },
         { id: 'islamic_knowledge', title: 'Islamic Knowledge', icon: '🕌' },
+    ];
+    
+    const LOADING_MESSAGES = [
+        "Contacting the AI Oracle...",
+        "Synthesizing challenging questions...",
+        "Reticulating splines...",
+        "Waking up the neural network...",
+        "Compiling knowledge matrices...",
+        "Querying the digital nexus for your quiz...",
+        "Engaging quantum processors...",
+        "Calibrating difficulty parameters...",
+        "Just a moment, the AI is thinking...",
+        "Crafting the perfect challenge for you..."
     ];
 
     const dom = {
@@ -53,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
             topics: {}
         },
         quiz: {},
+        loadingIntervalId: null,
     };
 
     // --- TOAST NOTIFICATIONS ---
@@ -177,10 +192,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const topicData = window.QUIZ_DATA[topic.id];
-        let fallbackSet = topicData[`level_${level}`];
+        let fallbackLevelKey;
+
+        if (level <= 10) {
+            fallbackLevelKey = 'level_1';
+        } else if (level <= 20) {
+            fallbackLevelKey = 'level_11';
+        } else {
+            fallbackLevelKey = 'level_21';
+        }
+        
+        // Use a more specific fallback if available
+        if (topicData[`level_${level}`]) {
+            fallbackLevelKey = `level_${level}`;
+        }
+
+
+        let fallbackSet = topicData[fallbackLevelKey];
 
         if (!fallbackSet || fallbackSet.length === 0) {
-            console.warn(`No fallback for level ${level}. Using level 1.`);
+            console.warn(`No fallback for level key ${fallbackLevelKey}. Defaulting to level_1.`);
             fallbackSet = topicData['level_1'] || [];
         }
         
@@ -385,12 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.createElement('button');
             btn.className = 'option-btn';
             btn.textContent = option;
-            btn.addEventListener('click', () => {
-                if (state.quiz.answerSubmitted) return;
-                state.quiz.selectedAnswer = option;
-                document.querySelectorAll('.option-btn.selected').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-            });
+            btn.addEventListener('click', () => handleAnswerSelection(btn));
             optionsContainer.appendChild(btn);
         });
 
@@ -399,29 +425,14 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.quizHintsLeft.textContent = hintsLeft;
         dom.quizHintBtn.disabled = hintsLeft <= 0 || state.quiz.hintUsedThisQuestion;
 
-        document.getElementById('quiz-action-buttons').innerHTML = `<button id="submit-answer-btn" class="btn btn-primary">Submit</button>`;
-    }
+        document.getElementById('quiz-action-buttons').innerHTML = ''; // No more buttons needed
 
-    function renderQuizResult() {
-        const { questions, currentQuestionIndex, selectedAnswer, hintUsedThisQuestion } = state.quiz;
-        const question = questions[currentQuestionIndex];
-        const isCorrect = selectedAnswer === question.answer;
-
-        if (isCorrect) {
-            playSound('correct');
-            state.quiz.score += hintUsedThisQuestion ? 0.5 : 1;
-        } else {
-            playSound('incorrect');
-        }
-
-        document.querySelectorAll('.option-btn').forEach(btn => {
-            btn.disabled = true;
-            if (btn.textContent === question.answer) btn.classList.add('correct');
-            else if (btn.textContent === selectedAnswer) btn.classList.add('incorrect');
-        });
-
-        const nextText = currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Finish Quiz';
-        document.getElementById('quiz-action-buttons').innerHTML = `<button id="next-question-btn" class="btn btn-primary">${nextText}</button>`;
+        // Animate in
+        const quizBody = document.querySelector('.quiz-body');
+        gsap.fromTo(quizBody, 
+            { opacity: 0, y: 30 }, 
+            { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
+        );
     }
     
     function renderResultsScreen() {
@@ -455,15 +466,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- QUIZ WORKFLOW ---
     function resetQuizState() {
-        state.quiz = { questions: [], currentQuestionIndex: 0, selectedAnswer: null, score: 0, answerSubmitted: false, hintUsedThisQuestion: false };
-    }
-    
-    function handleAnswerSubmit() {
-        if (state.quiz.answerSubmitted || state.quiz.selectedAnswer === null) return;
-        state.quiz.answerSubmitted = true;
-        renderQuizResult();
+        state.quiz = { questions: [], currentQuestionIndex: 0, score: 0, answerSubmitted: false, hintUsedThisQuestion: false };
     }
 
+    function handleAnswerSelection(selectedButton) {
+        if (state.quiz.answerSubmitted) return;
+        state.quiz.answerSubmitted = true;
+
+        const selectedAnswer = selectedButton.textContent;
+        const { questions, currentQuestionIndex, hintUsedThisQuestion } = state.quiz;
+        const question = questions[currentQuestionIndex];
+        const isCorrect = selectedAnswer === question.answer;
+
+        playSound(isCorrect ? 'correct' : 'incorrect');
+        
+        if (isCorrect) {
+            state.quiz.score += hintUsedThisQuestion ? 0.5 : 1;
+        }
+
+        document.querySelectorAll('.option-btn').forEach(btn => {
+            btn.disabled = true;
+            if (btn.textContent === question.answer) {
+                btn.classList.add('correct');
+            } else if (btn.textContent === selectedAnswer) {
+                btn.classList.add('incorrect');
+            }
+        });
+
+        setTimeout(() => {
+            gsap.to('.quiz-body', {
+                opacity: 0,
+                y: -30,
+                duration: 0.4,
+                ease: 'power2.in',
+                onComplete: handleNextQuestion
+            });
+        }, 2000);
+    }
+    
     function handleHint() {
         if (state.userProgress.totalHints <= 0 || state.quiz.hintUsedThisQuestion) {
             return;
@@ -489,10 +529,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function handleNextQuestion() {
-        playSound('click');
         if (state.quiz.currentQuestionIndex < state.quiz.questions.length - 1) {
             state.quiz.currentQuestionIndex++;
-            state.quiz.selectedAnswer = null;
             state.quiz.answerSubmitted = false;
             state.quiz.hintUsedThisQuestion = false;
             renderQuizQuestion();
@@ -509,8 +547,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function startQuiz() {
         resetQuizState();
-        dom.loadingText.textContent = 'Generating your quiz with AI...';
+        
+        let messageIndex = 0;
+        dom.loadingText.textContent = LOADING_MESSAGES[messageIndex];
+        state.loadingIntervalId = setInterval(() => {
+            messageIndex = (messageIndex + 1) % LOADING_MESSAGES.length;
+            dom.loadingText.textContent = LOADING_MESSAGES[messageIndex];
+        }, 2500);
+
         dom.loadingOverlay.classList.remove('hidden');
+
         try {
             const questions = await getQuizQuestions(state.currentTopic.title, state.currentLevel);
             if (!questions || questions.length === 0) throw new Error("Could not load questions.");
@@ -521,6 +567,8 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Failed to start quiz: ${error.message} Please try again.`);
             navigateTo(Screen.LEVEL);
         } finally {
+            clearInterval(state.loadingIntervalId);
+            state.loadingIntervalId = null;
             dom.loadingOverlay.classList.add('hidden');
             dom.loadingText.textContent = 'Loading...';
         }
@@ -556,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('offline', () => showToast('⚠️ You are in Offline Mode. AI is temporarily unavailable.', true));
         
         const themeToggleButton = document.getElementById('theme-toggle-btn');
-        const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+        const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
         const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
 
         function applyInitialTheme() {
@@ -627,8 +675,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const target = e.target.closest('button');
             if (!target) return;
             switch(target.id) {
-                case 'submit-answer-btn': handleAnswerSubmit(); break;
-                case 'next-question-btn': handleNextQuestion(); break;
                 case 'next-level-btn':
                     playSound('click');
                     state.currentLevel++;
