@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const dom = {
         screens: document.querySelectorAll('.screen'),
+        appContainer: document.getElementById('app-container'),
         loadingOverlay: document.getElementById('loading-overlay'),
         loadingText: document.getElementById('loading-text'),
         usernameDisplay: document.getElementById('username-display'),
@@ -184,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function unlockNextLevel(topicTitle, completedLevel) {
-        const progress = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
+        const progress = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, scores: {}, history: [] };
         if (completedLevel === progress.highestLevelUnlocked && completedLevel < TOTAL_LEVELS) {
             progress.highestLevelUnlocked++;
         }
@@ -192,15 +193,115 @@ document.addEventListener('DOMContentLoaded', () => {
         saveProgress();
     }
 
-    function saveScore(topicTitle, level, score) {
-        const progress = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
+    function recordQuizResult(topicTitle, level, score) {
+        const progress = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, scores: {}, history: [] };
         progress.scores = progress.scores || {};
+        progress.history = progress.history || [];
+
+        // Update highest score for the level
         progress.scores[level] = Math.max(progress.scores[level] || 0, score);
+        
+        // Add new history entry
+        const historyEntry = {
+            level,
+            score,
+            date: new Date().toISOString()
+        };
+        progress.history.push(historyEntry);
+
         state.userProgress.topics[topicTitle] = progress;
         saveProgress();
     }
 
+
     // --- RENDERING LOGIC ---
+    const TOPIC_BACKGROUND_MAP = {
+        programming: 'bg-programming',
+        biology: 'bg-biology',
+        space_astronomy: 'bg-space_astronomy',
+        technology_ai: 'bg-technology_ai',
+        islamic_knowledge: 'bg-islamic_knowledge',
+        history_geography: 'bg-history_geography',
+        science_inventions: 'bg-science_inventions',
+        mathematics_logic: 'bg-mathematics_logic',
+        world_knowledge: 'bg-world_knowledge',
+    };
+
+    function updateBackground(topicId = null) {
+        // Remove all existing background classes from the app container
+        Object.values(TOPIC_BACKGROUND_MAP).forEach(bgClass => {
+            dom.appContainer.classList.remove(bgClass);
+        });
+        dom.appContainer.classList.remove('bg-default');
+
+        const backgroundClass = TOPIC_BACKGROUND_MAP[topicId];
+        if (backgroundClass) {
+            dom.appContainer.classList.add(backgroundClass);
+        } else {
+            // Fallback to default background for home screen or if no topic is active
+            dom.appContainer.classList.add('bg-default');
+        }
+    }
+
+    // Special handler for the animated matrix background
+    function handleMatrixBackground() {
+        const canvas = document.getElementById('matrix-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let animationFrameId;
+
+        const resizeCanvas = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        resizeCanvas();
+
+        const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+        const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const nums = '0123456789';
+        const alphabet = katakana + latin + nums;
+
+        const fontSize = 16;
+        const columns = Math.ceil(canvas.width / fontSize);
+        const rainDrops = Array.from({ length: columns }).fill(1);
+
+        const draw = () => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00F6A3'; // Use accent green
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < rainDrops.length; i++) {
+                const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+
+                if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    rainDrops[i] = 0;
+                }
+                rainDrops[i]++;
+            }
+            animationFrameId = requestAnimationFrame(draw);
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && entries[0].intersectionRatio > 0) {
+                 if (!animationFrameId) {
+                    draw();
+                }
+            } else {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        }, { threshold: 0 });
+
+        const matrixBgElement = document.querySelector('.matrix-bg');
+        if (matrixBgElement) {
+            observer.observe(matrixBgElement);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+    }
+    
     function renderHintCounters() {
         const hints = state.userProgress.totalHints;
         dom.headerHintCounter.innerHTML = `
@@ -215,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderHomeScreen() {
         const topicGrid = document.getElementById('topic-grid');
         topicGrid.innerHTML = TOPICS.map(topic => `
-            <div class="topic-card" data-topic-title="${topic.title}">
+            <div class="topic-card" data-topic-id="${topic.id}" data-topic-title="${topic.title}">
                 <div class="icon">${topic.icon}</div>
                 <h3>${topic.title}</h3>
             </div>
@@ -224,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         topicGrid.querySelectorAll('.topic-card').forEach(card => {
             card.addEventListener('click', () => {
                 playSound('click');
-                state.currentTopic = TOPICS.find(t => t.title === card.dataset.topicTitle);
+                state.currentTopic = TOPICS.find(t => t.id === card.dataset.topicId);
                 navigateTo(Screen.LEVEL);
             });
         });
@@ -232,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderLevelScreen() {
         document.getElementById('level-topic-title').textContent = state.currentTopic.title;
-        const progress = state.userProgress.topics[state.currentTopic.title] || { highestLevelUnlocked: 1 };
+        const progress = state.userProgress.topics[state.currentTopic.title] || { highestLevelUnlocked: 1, scores: {}, history: [] };
         const completion = Math.floor(((progress.highestLevelUnlocked - 1) / TOTAL_LEVELS) * 100);
         document.getElementById('level-progress-text').textContent = `Progress: ${completion}%`;
         document.getElementById('level-progress-bar').style.width = `${completion}%`;
@@ -259,7 +360,26 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         document.getElementById('current-level-text').textContent = progress.highestLevelUnlocked;
+
+        const historyLog = document.getElementById('history-log');
+        const history = progress.history || [];
+
+        if (history.length > 0) {
+            const sortedHistory = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+            historyLog.innerHTML = sortedHistory.map(item => `
+                <div class="history-item">
+                    <div class="history-item-details">
+                        <span class="level-tag">Lvl ${item.level}</span>
+                        Score: <span class="history-item-score">${item.score} / ${QUESTIONS_PER_QUIZ}</span>
+                    </div>
+                    <div class="history-item-date">${new Date(item.date).toLocaleDateString()}</div>
+                </div>
+            `).join('');
+        } else {
+            historyLog.innerHTML = `<p class="no-history-message">No attempts recorded for this topic yet.</p>`;
+        }
     }
+
 
     function renderQuizQuestion() {
         const { questions, currentQuestionIndex } = state.quiz;
@@ -390,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderQuizQuestion();
         } else {
             if (!state.isGuest) {
-                saveScore(state.currentTopic.title, state.currentLevel, state.quiz.score);
+                recordQuizResult(state.currentTopic.title, state.currentLevel, state.quiz.score);
                 if (state.quiz.score >= SCORE_TO_UNLOCK_NEXT_LEVEL) {
                     unlockNextLevel(state.currentTopic.title, state.currentLevel);
                 }
@@ -423,6 +543,14 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentScreen = screenId;
         dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
         
+        // Update background based on screen/topic
+        if (screenId === Screen.HOME) {
+            state.currentTopic = null; // Clear topic when returning home
+            updateBackground(); // Set default background
+        } else if (state.currentTopic) {
+            updateBackground(state.currentTopic.id);
+        }
+        
         switch (screenId) {
             case Screen.HOME: renderHomeScreen(); break;
             case Screen.LEVEL: renderLevelScreen(); break;
@@ -434,6 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INITIALIZATION ---
     function init() {
         document.body.addEventListener('click', initAudio, { once: true });
+        handleMatrixBackground();
         
         const themeToggleButton = document.getElementById('theme-toggle-btn');
         const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
