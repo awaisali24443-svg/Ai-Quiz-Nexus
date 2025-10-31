@@ -1,7 +1,8 @@
+
 {
-  "name": "ai-quiz-nexus-secure",
+  "name": "knowledge-tester-secure",
   "version": "1.0.0",
-  "description": "AI Quiz Nexus with secure authentication",
+  "description": "Knowledge Tester with secure authentication",
   "type": "module",
   "scripts": {
     "start": "node server.js",

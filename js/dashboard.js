@@ -16,15 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const TOPICS = [
-        { id: 'programming', title: 'Programming', icon: '💻' },
-        { id: 'world_knowledge', title: 'World Knowledge', icon: '🌍' },
-        { id: 'biology', title: 'Biology', icon: '🧬' },
-        { id: 'space_astronomy', title: 'Space', icon: '🔭' },
-        { id: 'technology_ai', title: 'Technology & AI', icon: '🧠' },
-        { id: 'history_geography', title: 'History', icon: '🗺️' },
-        { id: 'mathematics_logic', title: 'Mathematics', icon: '🧮' },
-        { id: 'science_inventions', title: 'Science', icon: '🔬' },
-        { id: 'islamic_knowledge', title: 'Islamic Knowledge', icon: '🕌' },
+        { id: 'programming', title: 'Programming', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>` },
+        { id: 'world_knowledge', title: 'World Knowledge', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>` },
+        { id: 'biology', title: 'Biology', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5c-3.3 0-3.3 4 0 4h15c3.3 0 3.3-4 0-4h-4.5c-3.3 0-3.3 4 0 4h4.5c3.3 0 3.3-4 0-4H4.5z"></path><path d="M4.5 6.5c-3.3 0-3.3 4 0 4h15c3.3 0 3.3-4 0-4h-4.5c-3.3 0-3.3 4 0 4h4.5c3.3 0 3.3-4 0-4H4.5z"></path></svg>` },
+        { id: 'space_astronomy', title: 'Space', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10c0-4.42-2.87-8.17-7-9.58"></path><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.9 0 1.77-.12 2.6-.35"></path></svg>` },
+        { id: 'technology_ai', title: 'Technology & AI', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect x="4" y="12" width="16" height="8" rx="2"></rect><path d="M12 12v8"></path><path d="M9 12v8"></path><path d="M15 12v8"></path><path d="M9 4h6a2 2 0 0 1 2 2v2"></path><path d="M9 8h6"></path></svg>` },
+        { id: 'history_geography', title: 'History', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>` },
+        { id: 'mathematics_logic', title: 'Mathematics', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="8" y1="12" x2="16" y2="12"></line><line x1="12" y1="8" x2="12" y2="16"></line><line x1="12" y1="3" x2="12" y2="21"></line><line x1="3" y1="12" x2="21" y2="12"></line></svg>` },
+        { id: 'science_inventions', title: 'Science', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>` },
+        { id: 'islamic_knowledge', title: 'Islamic Knowledge', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14.5A2.5 2.5 0 0 1 4.5 12H8a2.5 2.5 0 0 1 0 5H4.5A2.5 2.5 0 0 1 2 14.5zM22 12h-2.5a2.5 2.5 0 0 0 0 5H22"></path><path d="M12 2a10 10 0 0 0-3.5 19.34"></path><path d="M12 2a10 10 0 0 1 3.5 19.34"></path></svg>` },
     ];
     
     const LOADING_MESSAGES = [
@@ -355,7 +355,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 scale: 1,
                 duration: 0.5, 
                 stagger: 0.07, 
-                ease: 'power2.out' 
+                ease: 'power2.out',
+                delay: 0.6
             }
         );
     }
