@@ -104,6 +104,23 @@ function destroy3DScene() {
     cancelAnimationFrame(animationFrameId);
     if (renderer) {
         renderer.dispose();
+        // Recursively dispose of objects in the scene
+        scene.traverse(object => {
+            if (object.geometry) {
+                object.geometry.dispose();
+            }
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(material => {
+                        if (material.map) material.map.dispose();
+                        material.dispose();
+                    });
+                } else {
+                    if (object.material.map) object.material.map.dispose();
+                    object.material.dispose();
+                }
+            }
+        });
         renderer.forceContextLoss();
     }
     scene = null;

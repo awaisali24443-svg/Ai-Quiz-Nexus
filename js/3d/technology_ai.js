@@ -27,7 +27,7 @@ function init3DScene(container) {
     for (let i = 0; i < layers; i++) {
         const layerNodes = [];
         for (let j = 0; j < nodesPerLayer; j++) {
-            const node = new THREE.Mesh(nodeGeometry, nodeMaterial);
+            const node = new THREE.Mesh(nodeGeometry.clone(), nodeMaterial);
             node.position.x = (j - nodesPerLayer / 2) * 50 + (Math.random() - 0.5) * 10;
             node.position.y = (Math.random() - 0.5) * 300;
             node.position.z = (i - layers / 2) * layerDistance + (Math.random() - 0.5) * 10;
@@ -118,6 +118,23 @@ function destroy3DScene() {
     cancelAnimationFrame(animationFrameId);
     if (renderer) {
         renderer.dispose();
+        // Recursively dispose of objects in the scene
+        scene.traverse(object => {
+            if (object.geometry) {
+                object.geometry.dispose();
+            }
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(material => {
+                        if (material.map) material.map.dispose();
+                        material.dispose();
+                    });
+                } else {
+                    if (object.material.map) object.material.map.dispose();
+                    object.material.dispose();
+                }
+            }
+        });
         renderer.forceContextLoss();
     }
     scene = null;

@@ -49,7 +49,7 @@ function init3DScene(container) {
     const particleMat = new THREE.MeshBasicMaterial({ color: 0x00F6A3, transparent: true, opacity: 0.5 });
     particles = new THREE.Group();
     for(let i=0; i<200; i++) {
-        const p = new THREE.Mesh(particleGeo, particleMat);
+        const p = new THREE.Mesh(particleGeo.clone(), particleMat);
         p.position.set((Math.random()-0.5)*800, (Math.random()-0.5)*800, (Math.random()-0.5)*800);
         particles.add(p);
     }
@@ -108,6 +108,23 @@ function destroy3DScene() {
     cancelAnimationFrame(animationFrameId);
     if (renderer) {
         renderer.dispose();
+        // Recursively dispose of objects in the scene
+        scene.traverse(object => {
+            if (object.geometry) {
+                object.geometry.dispose();
+            }
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(material => {
+                        if (material.map) material.map.dispose();
+                        material.dispose();
+                    });
+                } else {
+                    if (object.material.map) object.material.map.dispose();
+                    object.material.dispose();
+                }
+            }
+        });
         renderer.forceContextLoss();
     }
     scene = null;

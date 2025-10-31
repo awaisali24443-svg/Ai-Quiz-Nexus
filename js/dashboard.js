@@ -54,6 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
         quizHintBtn: document.getElementById('hint-btn'),
         quizHintsLeft: document.getElementById('hints-left'),
         toggle3DBtn: document.getElementById('toggle-3d-btn'),
+        startTimeChallengeBtn: document.getElementById('start-time-challenge-btn'),
+        quizTimer: document.getElementById('quiz-timer'),
     };
 
     let state = {
@@ -68,6 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
             topics: {}
         },
         quiz: {},
+        gameMode: 'topic', // 'topic' or 'timeChallenge'
+        quizTimerIntervalId: null,
         loadingIntervalId: null,
     };
 
@@ -224,6 +228,33 @@ document.addEventListener('DOMContentLoaded', () => {
         return shuffledFallbacks.slice(0, QUESTIONS_PER_QUIZ);
     }
     
+    async function fetchTimeChallengeQuestions() {
+        if (!navigator.onLine) {
+            throw new Error('Time Challenge requires an internet connection to generate mixed questions.');
+        }
+        try {
+            const response = await fetch('/api/generate-time-challenge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'AI generation for Time Challenge failed.');
+            }
+
+            const data = await response.json();
+            if (!data.questions || data.questions.length === 0) {
+                throw new Error("AI returned no questions for the challenge.");
+            }
+            return shuffleArray(data.questions);
+        } catch (error) {
+            console.error(`Time Challenge quiz generation failed. Error: ${error.message}`);
+            showToast('⚠️ AI is unavailable for the Time Challenge.', true);
+            throw error;
+        }
+    }
+
     // --- PROGRESS & STORAGE ---
     function getStorageKey() {
         if (state.isGuest || !state.session.user.email) {
@@ -336,14 +367,32 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="topic-card" data-topic-id="${topic.id}" data-topic-title="${topic.title}">
                 <div class="icon">${topic.icon}</div>
                 <h3>${topic.title}</h3>
+                <p>Expand your knowledge in ${topic.title}.</p>
             </div>
         `).join('');
+        
+        const cards = topicGrid.querySelectorAll('.topic-card');
 
-        topicGrid.querySelectorAll('.topic-card').forEach(card => {
+        cards.forEach(card => {
             card.addEventListener('click', () => {
                 playSound('click');
                 state.currentTopic = TOPICS.find(t => t.id === card.dataset.topicId);
+                state.gameMode = 'topic';
                 navigateTo(Screen.LEVEL);
+            });
+
+            // Parallax Tilt Effect
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const { width, height } = rect;
+                const rotateX = (y / height - 0.5) * -15; // Max 7.5 deg
+                const rotateY = (x / width - 0.5) * 15; // Max 7.5 deg
+                card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'rotateX(0) rotateY(0) scale(1)';
             });
         });
 
@@ -446,39 +495,96 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderResultsScreen() {
-        const score = state.quiz.score;
-        document.getElementById('results-topic-text').textContent = `Performance for ${state.currentTopic.title} - Level ${state.currentLevel}`;
-        document.getElementById('final-score-value').textContent = String(score);
-        document.getElementById('total-questions-value').textContent = String(QUESTIONS_PER_QUIZ);
-        document.getElementById('correct-answers').textContent = String(score % 1 === 0 ? score : score.toFixed(1));
-        document.getElementById('incorrect-answers').textContent = String(QUESTIONS_PER_QUIZ - score);
+        const { score, timedOut } = state.quiz;
+        const totalQuestions = QUESTIONS_PER_QUIZ;
 
-        const unlocked = score >= SCORE_TO_UNLOCK_NEXT_LEVEL;
+        const titleEl = document.querySelector('#results-screen .screen-title');
+        const subtitleEl = document.getElementById('results-topic-text');
         const unlockMsg = document.getElementById('unlock-message');
+        const actionButtons = document.getElementById('results-action-buttons');
         
-        if (state.isGuest) {
-            unlockMsg.textContent = 'Sign up to save progress and unlock new levels!';
-        } else if (unlocked) {
-            const isLastLevel = state.currentLevel >= TOTAL_LEVELS;
-            if (!isLastLevel) playSound('levelUp');
-            unlockMsg.textContent = isLastLevel ? 'Mastered! All levels cleared!' : 'Congratulations! Next Level Unlocked!';
-        } else {
-            unlockMsg.textContent = `You need ${SCORE_TO_UNLOCK_NEXT_LEVEL} correct answers to unlock the next level. Try again.`;
+        document.getElementById('final-score-value').textContent = String(score % 1 === 0 ? score : score.toFixed(1));
+        document.getElementById('total-questions-value').textContent = String(totalQuestions);
+        document.getElementById('correct-answers').textContent = String(score % 1 === 0 ? score : score.toFixed(1));
+        document.getElementById('incorrect-answers').textContent = String(totalQuestions - score);
+
+        if (state.gameMode === 'timeChallenge') {
+            titleEl.textContent = timedOut ? "Time's Up!" : "Challenge Complete!";
+            subtitleEl.textContent = "You completed the Time Challenge.";
+            unlockMsg.classList.add('hidden');
+            actionButtons.innerHTML = `
+                <button id="retry-challenge-btn" class="btn btn-primary">Try Again</button>
+                <button id="topics-btn" class="btn btn-secondary">Back to Topics</button>
+            `;
+        } else { // topic mode
+            titleEl.textContent = "Level Complete!";
+            subtitleEl.textContent = `Performance for ${state.currentTopic.title} - Level ${state.currentLevel}`;
+            
+            const unlocked = score >= SCORE_TO_UNLOCK_NEXT_LEVEL;
+            if (state.isGuest) {
+                unlockMsg.textContent = 'Sign up to save progress and unlock new levels!';
+            } else if (unlocked) {
+                const isLastLevel = state.currentLevel >= TOTAL_LEVELS;
+                if (!isLastLevel) playSound('levelUp');
+                unlockMsg.textContent = isLastLevel ? 'Mastered! All levels cleared!' : 'Congratulations! Next Level Unlocked!';
+            } else {
+                unlockMsg.textContent = `You need ${SCORE_TO_UNLOCK_NEXT_LEVEL} correct answers to unlock the next level. Try again.`;
+            }
+            unlockMsg.classList.remove('hidden');
+            
+            actionButtons.innerHTML = `
+                ${unlocked && !state.isGuest && state.currentLevel < TOTAL_LEVELS ? '<button id="next-level-btn" class="btn btn-primary">Next Level</button>' : ''}
+                <button id="retry-btn" class="btn btn-secondary">Retry Level</button>
+                <button id="topics-btn" class="btn btn-secondary">Back to Topics</button>
+            `;
         }
-        unlockMsg.classList.remove('hidden');
-        
-        document.getElementById('results-action-buttons').innerHTML = `
-            ${unlocked && !state.isGuest && state.currentLevel < TOTAL_LEVELS ? '<button id="next-level-btn" class="btn btn-primary">Next Level</button>' : ''}
-            <button id="retry-btn" class="btn btn-secondary">Retry Level</button>
-            <button id="topics-btn" class="btn btn-secondary">Back to Topics</button>
-        `;
     }
 
     // --- QUIZ WORKFLOW ---
     function resetQuizState() {
-        state.quiz = { questions: [], currentQuestionIndex: 0, score: 0, answerSubmitted: false, hintUsedThisQuestion: false };
+        stopTimer();
+        state.quiz = { questions: [], currentQuestionIndex: 0, score: 0, answerSubmitted: false, hintUsedThisQuestion: false, timedOut: false };
     }
 
+    function startTimer(duration) {
+        let timer = duration;
+        let minutes, seconds;
+        
+        if (state.quizTimerIntervalId) {
+            clearInterval(state.quizTimerIntervalId);
+        }
+
+        state.quizTimerIntervalId = setInterval(() => {
+            minutes = parseInt(timer / 60, 10);
+            seconds = parseInt(timer % 60, 10);
+
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            dom.quizTimer.textContent = minutes + ":" + seconds;
+            dom.quizTimer.classList.toggle('low-time', timer <= 30);
+
+            if (--timer < 0) {
+                endQuizByTimeout();
+            }
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(state.quizTimerIntervalId);
+        state.quizTimerIntervalId = null;
+    }
+
+    function endQuizByTimeout() {
+        stopTimer();
+        playSound('incorrect');
+        
+        if (state.gameMode === 'timeChallenge') {
+            state.quiz.timedOut = true;
+            navigateTo(Screen.RESULTS);
+        }
+    }
+    
     function handleAnswerSelection(selectedButton) {
         if (state.quiz.answerSubmitted) return;
         state.quiz.answerSubmitted = true;
@@ -545,7 +651,8 @@ document.addEventListener('DOMContentLoaded', () => {
             state.quiz.hintUsedThisQuestion = false;
             renderQuizQuestion();
         } else {
-            if (!state.isGuest) {
+            stopTimer(); // Stop timer if they finish early
+            if (!state.isGuest && state.gameMode === 'topic') {
                 recordQuizResult(state.currentTopic.title, state.currentLevel, state.quiz.score);
                 if (state.quiz.score >= SCORE_TO_UNLOCK_NEXT_LEVEL) {
                     unlockNextLevel(state.currentTopic.title, state.currentLevel);
@@ -568,14 +675,23 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.loadingOverlay.classList.remove('hidden');
 
         try {
-            const questions = await getQuizQuestions(state.currentTopic.title, state.currentLevel);
+            let questions;
+            if (state.gameMode === 'timeChallenge') {
+                questions = await fetchTimeChallengeQuestions();
+                dom.quizTimer.classList.remove('hidden');
+                startTimer(150);
+            } else {
+                questions = await getQuizQuestions(state.currentTopic.title, state.currentLevel);
+                dom.quizTimer.classList.add('hidden');
+            }
+            
             if (!questions || questions.length === 0) throw new Error("Could not load questions.");
             state.quiz.questions = questions;
             renderQuizQuestion();
         } catch (error) {
             console.error(error);
-            alert(`Failed to start quiz: ${error.message} Please try again.`);
-            navigateTo(Screen.LEVEL);
+            showToast(`Failed to start quiz: ${error.message}`, true);
+            navigateTo(state.gameMode === 'topic' ? Screen.LEVEL : Screen.HOME);
         } finally {
             clearInterval(state.loadingIntervalId);
             state.loadingIntervalId = null;
@@ -614,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('offline', () => showToast('⚠️ You are in Offline Mode. AI is temporarily unavailable.', true));
         
         const themeToggleButton = document.getElementById('theme-toggle-btn');
-        const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+        const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
         const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
 
         function applyInitialTheme() {
@@ -680,6 +796,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('logout-btn').addEventListener('click', () => { playSound('click'); window.auth.logout(); });
         dom.quizHintBtn.addEventListener('click', handleHint);
+        dom.startTimeChallengeBtn.addEventListener('click', () => {
+            playSound('click');
+            state.gameMode = 'timeChallenge';
+            navigateTo(Screen.QUIZ);
+        });
         
         document.addEventListener('click', e => {
             const target = e.target.closest('button');
@@ -691,6 +812,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     navigateTo(Screen.QUIZ);
                     break;
                 case 'retry-btn': playSound('click'); navigateTo(Screen.QUIZ); break;
+                case 'retry-challenge-btn':
+                    playSound('click');
+                    state.gameMode = 'timeChallenge';
+                    navigateTo(Screen.QUIZ);
+                    break;
                 case 'topics-btn': playSound('click'); navigateTo(Screen.HOME); break;
                 case 'back-to-topics-btn': playSound('click'); navigateTo(Screen.HOME); break;
                 case 'start-current-level-btn':

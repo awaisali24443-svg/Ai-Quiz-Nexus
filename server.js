@@ -12,7 +12,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-const DATA_DIR = path.join(__dirname, 'data');
+// Corrected path to the data directory, assuming it's inside 'css' as per user's file list.
+const DATA_DIR = path.join(__dirname, 'css', 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
 // Define the root route before serving static files
@@ -28,6 +29,7 @@ app.use(express.static(path.join(__dirname))); // Serve static files
 // Helper function to read users from JSON file
 async function readUsers() {
     try {
+        await fs.mkdir(DATA_DIR, { recursive: true });
         const data = await fs.readFile(USERS_FILE, 'utf-8');
         return JSON.parse(data);
     } catch (error) {
@@ -41,6 +43,7 @@ async function readUsers() {
 
 // Helper function to write users to JSON file
 async function writeUsers(users) {
+    await fs.mkdir(DATA_DIR, { recursive: true });
     await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
 }
 
@@ -185,7 +188,84 @@ app.post('/api/generate-quiz', async (req, res) => {
 
     } catch (error) {
         console.error('Error generating quiz with Gemini:', error);
-        res.status(500).json({ message: 'Failed to generate quiz. The AI might be busy, please try again later.' });
+        res.status(500).json({ message: `Failed to generate quiz. The AI might be busy. Details: ${error.message}` });
+    }
+});
+
+app.post('/api/generate-time-challenge', async (req, res) => {
+    if (!process.env.API_KEY) {
+        return res.status(503).json({ message: 'AI service is not configured on the server. Missing or invalid API_KEY.' });
+    }
+
+    const questionsPerQuiz = 10;
+    const TOPICS = [ 'Programming', 'World Knowledge', 'Biology', 'Space', 'Technology & AI', 'History', 'Mathematics', 'Science', 'Islamic Knowledge' ];
+
+    // Shuffle topics and pick a few to ensure variety
+    const shuffledTopics = TOPICS.sort(() => 0.5 - Math.random());
+    const selectedTopics = shuffledTopics.slice(0, 5).join(', ');
+
+    let ai;
+    try {
+        ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    } catch (e) {
+        console.error("🔴 Failed to initialize Gemini AI:", e.message);
+        return res.status(503).json({ message: 'AI service could not be initialized. The API key might be invalid.' });
+    }
+
+    const quizSchema = {
+        type: Type.OBJECT,
+        properties: {
+            questions: {
+                type: Type.ARRAY,
+                description: 'An array of quiz question objects.',
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        q: {
+                            type: Type.STRING,
+                            description: 'The question text.'
+                        },
+                        options: {
+                            type: Type.ARRAY,
+                            description: 'An array of 4 strings representing the possible answers.',
+                            items: { type: Type.STRING }
+                        },
+                        answer: {
+                            type: Type.STRING,
+                            description: 'The correct answer, which must exactly match one of the items in the options array.'
+                        }
+                    },
+                    required: ['q', 'options', 'answer']
+                }
+            }
+        },
+        required: ['questions']
+    };
+
+    const prompt = `Generate a quiz with exactly ${questionsPerQuiz} multiple-choice questions. The questions should be a mix of general knowledge from the following topics: ${selectedTopics}. The difficulty should be mixed, from easy to medium. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: quizSchema,
+            },
+        });
+        
+        const jsonText = response.text.trim();
+        const quizData = JSON.parse(jsonText);
+        
+        if (!quizData.questions || !Array.isArray(quizData.questions) || quizData.questions.length !== questionsPerQuiz) {
+            throw new Error(`AI returned an invalid number of questions. Expected ${questionsPerQuiz}, got ${quizData.questions?.length || 0}.`);
+        }
+
+        res.status(200).json(quizData);
+
+    } catch (error) {
+        console.error('Error generating time challenge quiz with Gemini:', error);
+        res.status(500).json({ message: `Failed to generate quiz. The AI might be busy. Details: ${error.message}` });
     }
 });
 
@@ -193,7 +273,7 @@ app.post('/api/generate-quiz', async (req, res) => {
 // --- Serve HTML files ---
 
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'login.html'));
 });
 
 app.get('/signup', (req, res) => {
@@ -207,9 +287,11 @@ app.get('/dashboard', (req, res) => {
 // Catch-all to redirect to login for any other path
 app.get('*', (req, res, next) => {
     // This allows static file requests (like css, js) to pass through
-    if (path.extname(req.path).length > 0) {
+    const extension = path.extname(req.path);
+    if (extension && extension !== '.html') {
         return next();
     }
+    // For any other path or html file, redirect to the main welcome screen
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 

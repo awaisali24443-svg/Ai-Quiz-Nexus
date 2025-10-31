@@ -91,10 +91,12 @@ function render() {
     camera.lookAt(scene.position);
 
     particles.rotation.y = time;
-    particles.children.forEach(p => { p.rotation.y = -time * 2; });
     
     // Also rotate the reflection
-    scene.children[1].rotation.y = time;
+    const reflection = scene.children[1];
+    if (reflection) {
+        reflection.rotation.y = time;
+    }
 
 
     renderer.render(scene, camera);
@@ -116,6 +118,23 @@ function destroy3DScene() {
     cancelAnimationFrame(animationFrameId);
     if (renderer) {
         renderer.dispose();
+        // Recursively dispose of objects in the scene
+        scene.traverse(object => {
+            if (object.geometry) {
+                object.geometry.dispose();
+            }
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(material => {
+                        if (material.map) material.map.dispose();
+                        material.dispose();
+                    });
+                } else {
+                    if (object.material.map) object.material.map.dispose();
+                    object.material.dispose();
+                }
+            }
+        });
         renderer.forceContextLoss();
     }
     scene = null;
