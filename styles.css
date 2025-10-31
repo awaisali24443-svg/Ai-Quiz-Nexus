@@ -190,8 +190,69 @@ main {
 .section-title { font-family: var(--font-title); font-size: 1.8rem; margin: 3rem 0 1.5rem; text-align: left; color: var(--primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
 
 /* Welcome Screen */
-.welcome-title { font-size: 2rem; margin-bottom: 1rem; }
-.welcome-subtitle { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; margin-bottom: 3rem; }
+#welcome-screen::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #05080f;
+    background-image: url('data:image/jpeg;base64,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');
+    background-size: cover;
+    background-position: center;
+    z-index: 1;
+}
+
+.welcome-logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.welcome-logo-icon {
+    width: 40px;
+    height: 40px;
+}
+
+.welcome-logo-text {
+    font-family: var(--font-body);
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #8bb4f3;
+}
+
+.welcome-headline {
+    font-family: var(--font-body);
+    font-size: clamp(2.2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    margin-bottom: 3rem;
+    line-height: 1.2;
+    color: var(--text-light);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#start-journey-btn {
+    background: #3c4a83;
+    color: var(--text-light);
+    border: 1px solid rgba(139, 180, 243, 0.5);
+    border-radius: 50px;
+    box-shadow: 0 0 20px rgba(60, 74, 131, 0.6);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 1.1rem;
+    text-transform: none;
+    padding: 0.9rem 2.2rem;
+    transition: all 0.3s ease;
+}
+
+#start-journey-btn:hover {
+    background: #4a5b9a;
+    box-shadow: 0 0 25px rgba(74, 91, 154, 0.8);
+    transform: translateY(-3px);
+    border-color: rgba(139, 180, 243, 0.8);
+}
 
 /* Auth Screen */
 .auth-container {
