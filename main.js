@@ -403,6 +403,26 @@ const saveScore = (topicTitle, level, score) => {
     saveProgress();
 };
 
+// --- THEME MANAGEMENT ---
+
+const applyTheme = (theme) => {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+    } else {
+        document.body.classList.remove('dark-theme');
+    }
+    const toggle = document.getElementById('theme-toggle-checkbox');
+    if (toggle) {
+        toggle.checked = theme === 'dark';
+    }
+};
+
+const loadAndApplyTheme = () => {
+    const savedTheme = localStorage.getItem('aiQuizNexusTheme') || 'light'; // Default to light theme
+    applyTheme(savedTheme);
+};
+
+
 // --- NAVIGATION & UI CONTROL ---
 
 const showLoading = (text = 'Loading...') => {
@@ -440,6 +460,12 @@ const updateHeader = (screenId) => {
     } else if (screenId !== Screen.WELCOME && screenId !== Screen.AUTH) {
         navHTML = `
             <nav>
+                <div class="theme-switch-wrapper">
+                    <label class="theme-switch" for="theme-toggle-checkbox" title="Toggle theme">
+                        <input type="checkbox" id="theme-toggle-checkbox" />
+                        <span class="slider round"></span>
+                    </label>
+                </div>
                 <button id="profile-btn" class="btn btn-secondary">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                     <span>Profile</span>
@@ -449,6 +475,13 @@ const updateHeader = (screenId) => {
         `;
     }
     dom.headerNavContainer.innerHTML = navHTML;
+
+    // Ensure the toggle reflects the current theme after it's been rendered
+    const savedTheme = localStorage.getItem('aiQuizNexusTheme') || 'light';
+    const toggle = document.getElementById('theme-toggle-checkbox');
+    if (toggle) {
+        toggle.checked = savedTheme === 'dark';
+    }
 };
 
 // --- EVENT LISTENERS ---
@@ -462,6 +495,15 @@ const addEventListeners = () => {
     });
     document.getElementById('back-to-topics-btn').addEventListener('click', () => navigateTo(Screen.HOME));
     
+    // Delegated listener for theme toggle
+    document.addEventListener('change', (e) => {
+        if (e.target.id === 'theme-toggle-checkbox') {
+            const newTheme = e.target.checked ? 'dark' : 'light';
+            localStorage.setItem('aiQuizNexusTheme', newTheme);
+            applyTheme(newTheme);
+        }
+    });
+
     document.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target) return;
@@ -561,7 +603,10 @@ const triggerConfetti = () => {
     
     let confettiPieces = [];
     const numberOfPieces = 150;
-    const colors = ['#007bff', '#28a745', '#ffc107', '#6c757d', '#17a2b8'];
+    const isDarkMode = document.body.classList.contains('dark-theme');
+    const colors = isDarkMode 
+        ? ['#00eaff', '#9B51E0', '#00F6A3', '#FFBD3E']
+        : ['#007bff', '#28a745', '#ffc107', '#6c757d', '#17a2b8'];
 
     function ConfettiParticle() {
         this.x = Math.random() * canvas.width;
@@ -629,6 +674,7 @@ const init = () => {
         });
     }
 
+    loadAndApplyTheme();
     loadProgress();
     addEventListeners();
     initMatrix();
