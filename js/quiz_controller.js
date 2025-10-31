@@ -1,4 +1,3 @@
-
 // This module is dynamically imported by dashboard.js only when a quiz starts.
 import { getFallbackQuestions } from './dashboard.js';
 
@@ -42,7 +41,7 @@ function startTimer(duration, onTimeout) {
             utils.playSound('incorrect');
             quizState.timedOut = true;
             stopTimer();
-            onTimeout(quizState); // End the quiz
+            onTimeout(quizState);
         }
     }, 1000);
 }
@@ -65,9 +64,14 @@ function renderQuizQuestion() {
         dom.optionsContainer.appendChild(btn);
     });
 
-    dom.quizHintBtn.classList.remove('hidden');
-    dom.quizHintsLeft.textContent = appState.userProgress.totalHints;
-    dom.quizHintBtn.disabled = appState.userProgress.totalHints <= 0 || quizState.hintUsedThisQuestion;
+    if (appState.isGuest) {
+        dom.quizHintBtn.classList.add('hidden');
+    } else {
+        dom.quizHintBtn.classList.remove('hidden');
+        dom.quizHintsLeft.textContent = appState.userProgress.totalHints;
+        dom.quizHintBtn.disabled = appState.userProgress.totalHints <= 0 || quizState.hintUsedThisQuestion;
+    }
+
 
     const quizBody = document.querySelector('.quiz-body');
     gsap.fromTo(quizBody, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
@@ -109,19 +113,17 @@ function handleNextQuestion() {
         renderQuizQuestion();
     } else {
         stopTimer();
-        // The quiz is finished, resolve the promise from runQuiz
         window.dispatchEvent(new CustomEvent('quizComplete', { detail: quizState }));
     }
 }
 
 function handleHint() {
-    if (appState.userProgress.totalHints <= 0 || quizState.hintUsedThisQuestion) return;
+    if (appState.isGuest || appState.userProgress.totalHints <= 0 || quizState.hintUsedThisQuestion) return;
     
     utils.playSound('click');
     appState.userProgress.totalHints--;
     quizState.hintUsedThisQuestion = true;
     
-    // In a modular setup, we'd call a state manager. For now, this is ok.
     document.getElementById('hint-counter-display').querySelector('span').textContent = appState.userProgress.totalHints;
     dom.quizHintsLeft.textContent = appState.userProgress.totalHints;
     dom.quizHintBtn.disabled = true;
@@ -135,7 +137,7 @@ function handleHint() {
     }
 }
 
-async function fetchQuizQuestions(prefetchPromise) {
+async function fetchQuizQuestions(prefetchPromise, answeredQuestions) {
     if (prefetchPromise) {
         utils.showToast("⚡ Prefetched quiz loaded!");
         const data = await prefetchPromise;
@@ -151,7 +153,9 @@ async function fetchQuizQuestions(prefetchPromise) {
     
     try {
         const endpoint = appState.gameMode === 'topic' ? '/api/generate-quiz' : '/api/generate-time-challenge';
-        const body = appState.gameMode === 'topic' ? { topic: appState.currentTopic.title, level: appState.currentLevel } : {};
+        const body = appState.gameMode === 'topic' 
+            ? { topic: appState.currentTopic.title, level: appState.currentLevel, answeredQuestions } 
+            : {};
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -168,15 +172,18 @@ async function fetchQuizQuestions(prefetchPromise) {
     }
 }
 
-export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils) {
+export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils, answeredQuestions = []) {
     return new Promise(async (resolve) => {
         appState = initialState;
         dom = domElements;
         utils = sharedUtils;
 
-        // Listener to resolve the promise when the quiz ends
         const onQuizComplete = (e) => {
-            resolve({ score: e.detail.score, timedOut: e.detail.timedOut });
+            resolve({ 
+                score: e.detail.score, 
+                timedOut: e.detail.timedOut,
+                questions: e.detail.questions // Pass back the questions for history
+            });
             window.removeEventListener('quizComplete', onQuizComplete);
         };
         window.addEventListener('quizComplete', onQuizComplete);
@@ -186,7 +193,7 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils)
         utils.showLoading(true, "Crafting your challenge...");
 
         try {
-            const questions = await fetchQuizQuestions(prefetchPromise);
+            const questions = await fetchQuizQuestions(prefetchPromise, answeredQuestions);
             quizState.questions = questions.sort(() => 0.5 - Math.random()).slice(0, QUESTIONS_PER_QUIZ);
             
             if (appState.gameMode === 'timeChallenge') {
@@ -200,7 +207,7 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils)
         } catch (error) {
             console.error(error);
             utils.showToast(`Failed to start quiz: ${error.message}`, true);
-            resolve({ error: true }); // Resolve with an error flag
+            resolve({ error: true });
         } finally {
             utils.showLoading(false);
         }

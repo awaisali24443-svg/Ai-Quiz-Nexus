@@ -1,4 +1,3 @@
-
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,28 +11,23 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Corrected path to the data directory, assuming it's inside 'css' as per user's file list.
 const DATA_DIR = path.join(__dirname, 'css', 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
-// Define the root route before serving static files
-// This ensures that visiting the base URL serves the login page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Middleware
-app.use(express.json()); // for parsing application/json
-app.use(express.static(path.join(__dirname))); // Serve static files
+// Increased payload size limit to accommodate Base64 profile pictures
+app.use(express.json({ limit: '5mb' }));
+app.use(express.static(path.join(__dirname)));
 
-// Helper function to read users from JSON file
 async function readUsers() {
     try {
         await fs.mkdir(DATA_DIR, { recursive: true });
         const data = await fs.readFile(USERS_FILE, 'utf-8');
         return JSON.parse(data);
     } catch (error) {
-        // If file doesn't exist, return empty array
         if (error.code === 'ENOENT') {
             return [];
         }
@@ -41,16 +35,13 @@ async function readUsers() {
     }
 }
 
-// Helper function to write users to JSON file
 async function writeUsers(users) {
     await fs.mkdir(DATA_DIR, { recursive: true });
     await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
 }
 
-
 // --- API Routes ---
 
-// Register a new user
 app.post('/api/register', async (req, res) => {
     const { username, email, password } = req.body;
 
@@ -68,17 +59,27 @@ app.post('/api/register', async (req, res) => {
     if (users.find(user => user.email === email)) {
         return res.status(409).json({ message: 'This email is already registered. Please login instead.' });
     }
-
+    
+    const userId = Date.now().toString(36) + Math.random().toString(36).substr(2);
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = { username, email, password: hashedPassword };
+    const newUser = { 
+        userId, 
+        username, 
+        email, 
+        password: hashedPassword, 
+        profilePicture: '' 
+    };
     users.push(newUser);
     await writeUsers(users);
 
-    res.status(201).json({ username: newUser.username, email: newUser.email });
+    res.status(201).json({ 
+        userId: newUser.userId, 
+        username: newUser.username, 
+        email: newUser.email, 
+        profilePicture: newUser.profilePicture 
+    });
 });
 
-
-// Login a user
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
 
@@ -99,16 +100,82 @@ app.post('/api/login', async (req, res) => {
         return res.status(401).json({ message: 'Invalid credentials. Please try again or sign up.' });
     }
 
-    res.status(200).json({ username: user.username, email: user.email });
+    res.status(200).json({ 
+        userId: user.userId, 
+        username: user.username, 
+        email: user.email, 
+        profilePicture: user.profilePicture 
+    });
 });
 
-// Generate Quiz with Gemini
+app.post('/api/update-profile', async (req, res) => {
+    const { email, newUsername, newProfilePicture } = req.body;
+
+    if (!email || !newUsername) {
+        return res.status(400).json({ message: 'Email and new username are required.' });
+    }
+
+    const users = await readUsers();
+    const userIndex = users.findIndex(u => u.email === email);
+
+    if (userIndex === -1) {
+        return res.status(404).json({ message: 'User not found.' });
+    }
+    
+    users[userIndex].username = newUsername;
+    // newProfilePicture can be an empty string if they remove it, or null/undefined if not changing.
+    if (newProfilePicture !== undefined) { 
+        users[userIndex].profilePicture = newProfilePicture;
+    }
+
+    await writeUsers(users);
+
+    const updatedUser = users[userIndex];
+    res.status(200).json({ 
+        userId: updatedUser.userId,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        profilePicture: updatedUser.profilePicture
+    });
+});
+
+app.post('/api/change-password', async (req, res) => {
+    const { email, oldPassword, newPassword } = req.body;
+
+    if (!email || !oldPassword || !newPassword) {
+        return res.status(400).json({ message: 'All fields are required.' });
+    }
+    
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+        return res.status(400).json({ message: 'New password must be at least 8 characters long and contain at least one letter and one number.' });
+    }
+
+    const users = await readUsers();
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+        return res.status(401).json({ message: 'Incorrect old password.' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await writeUsers(users);
+
+    res.status(200).json({ message: 'Password changed successfully.' });
+});
+
+
 app.post('/api/generate-quiz', async (req, res) => {
     if (!process.env.API_KEY) {
         return res.status(503).json({ message: 'AI service is not configured on the server. Missing or invalid API_KEY.' });
     }
 
-    const { topic, level } = req.body;
+    const { topic, level, answeredQuestions } = req.body;
     const questionsPerQuiz = 10;
     const totalLevels = 30;
 
@@ -124,47 +191,19 @@ app.post('/api/generate-quiz', async (req, res) => {
         return res.status(503).json({ message: 'AI service could not be initialized. The API key might be invalid.' });
     }
 
-
     let difficulty;
-    if (level <= 10) {
-        difficulty = 'Easy';
-    } else if (level <= 20) {
-        difficulty = 'Intermediate';
-    } else {
-        difficulty = 'Expert';
+    if (level <= 10) difficulty = 'Easy';
+    else if (level <= 20) difficulty = 'Intermediate';
+    else difficulty = 'Expert';
+
+    const quizSchema = { /* ... schema remains the same ... */ };
+
+    let prompt = `Generate a quiz with ${questionsPerQuiz} multiple-choice questions on the topic of '${topic}'. The difficulty should be '${difficulty}', appropriate for level ${level} out of ${totalLevels}. A higher level means a harder quiz. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
+
+    if (answeredQuestions && answeredQuestions.length > 0) {
+        const questionsToAvoid = answeredQuestions.join('; ');
+        prompt += ` CRITICAL: Avoid generating questions that are identical or very similar to the following, as the user has already answered them: "${questionsToAvoid}". Generate completely new and distinct questions.`;
     }
-
-    const quizSchema = {
-        type: Type.OBJECT,
-        properties: {
-            questions: {
-                type: Type.ARRAY,
-                description: 'An array of quiz question objects.',
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        q: {
-                            type: Type.STRING,
-                            description: 'The question text.'
-                        },
-                        options: {
-                            type: Type.ARRAY,
-                            description: 'An array of 4 strings representing the possible answers.',
-                            items: { type: Type.STRING }
-                        },
-                        answer: {
-                            type: Type.STRING,
-                            description: 'The correct answer, which must exactly match one of the items in the options array.'
-                        }
-                    },
-                    required: ['q', 'options', 'answer']
-                }
-            }
-        },
-        required: ['questions']
-    };
-
-    const prompt = `Generate a quiz with ${questionsPerQuiz} multiple-choice questions on the topic of '${topic}'. The difficulty should be '${difficulty}', appropriate for level ${level} out of ${totalLevels}. A higher level means a harder quiz. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
 
     try {
         const response = await ai.models.generateContent({
@@ -172,14 +211,13 @@ app.post('/api/generate-quiz', async (req, res) => {
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
-                responseSchema: quizSchema,
+                responseSchema: { type: Type.OBJECT, properties: { questions: { type: Type.ARRAY, description: 'An array of quiz question objects.', items: { type: Type.OBJECT, properties: { q: { type: Type.STRING, description: 'The question text.' }, options: { type: Type.ARRAY, description: 'An array of 4 strings representing the possible answers.', items: { type: Type.STRING } }, answer: { type: Type.STRING, description: 'The correct answer, which must exactly match one of the items in the options array.' } }, required: ['q', 'options', 'answer'] } } }, required: ['questions'] },
             },
         });
         
         const jsonText = response.text.trim();
         const quizData = JSON.parse(jsonText);
         
-        // Basic validation
         if (!quizData.questions || !Array.isArray(quizData.questions) || quizData.questions.length === 0) {
             throw new Error("AI returned invalid or empty quiz data.");
         }
@@ -199,8 +237,6 @@ app.post('/api/generate-time-challenge', async (req, res) => {
 
     const questionsPerQuiz = 10;
     const TOPICS = [ 'Programming', 'World Knowledge', 'Biology', 'Space', 'Technology & AI', 'History', 'Mathematics', 'Science', 'Islamic Knowledge' ];
-
-    // Shuffle topics and pick a few to ensure variety
     const shuffledTopics = TOPICS.sort(() => 0.5 - Math.random());
     const selectedTopics = shuffledTopics.slice(0, 5).join(', ');
 
@@ -212,35 +248,7 @@ app.post('/api/generate-time-challenge', async (req, res) => {
         return res.status(503).json({ message: 'AI service could not be initialized. The API key might be invalid.' });
     }
 
-    const quizSchema = {
-        type: Type.OBJECT,
-        properties: {
-            questions: {
-                type: Type.ARRAY,
-                description: 'An array of quiz question objects.',
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        q: {
-                            type: Type.STRING,
-                            description: 'The question text.'
-                        },
-                        options: {
-                            type: Type.ARRAY,
-                            description: 'An array of 4 strings representing the possible answers.',
-                            items: { type: Type.STRING }
-                        },
-                        answer: {
-                            type: Type.STRING,
-                            description: 'The correct answer, which must exactly match one of the items in the options array.'
-                        }
-                    },
-                    required: ['q', 'options', 'answer']
-                }
-            }
-        },
-        required: ['questions']
-    };
+    const quizSchema = { /* ... schema remains the same ... */ };
 
     const prompt = `Generate a quiz with exactly ${questionsPerQuiz} multiple-choice questions. The questions should be a mix of general knowledge from the following topics: ${selectedTopics}. The difficulty should be mixed, from easy to medium. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
 
@@ -250,7 +258,7 @@ app.post('/api/generate-time-challenge', async (req, res) => {
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
-                responseSchema: quizSchema,
+                responseSchema: { type: Type.OBJECT, properties: { questions: { type: Type.ARRAY, description: 'An array of quiz question objects.', items: { type: Type.OBJECT, properties: { q: { type: Type.STRING, description: 'The question text.' }, options: { type: Type.ARRAY, description: 'An array of 4 strings representing the possible answers.', items: { type: Type.STRING } }, answer: { type: Type.STRING, description: 'The correct answer, which must exactly match one of the items in the options array.' } }, required: ['q', 'options', 'answer'] } } }, required: ['questions'] },
             },
         });
         
@@ -269,40 +277,20 @@ app.post('/api/generate-time-challenge', async (req, res) => {
     }
 });
 
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
+app.get('/signup', (req, res) => res.sendFile(path.join(__dirname, 'signup.html')));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
 
-// --- Serve HTML files ---
-
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
-});
-
-app.get('/signup', (req, res) => {
-    res.sendFile(path.join(__dirname, 'signup.html'));
-});
-
-app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dashboard.html'));
-});
-
-// Catch-all to redirect to login for any other path
 app.get('*', (req, res, next) => {
-    // This allows static file requests (like css, js) to pass through
     const extension = path.extname(req.path);
-    if (extension && extension !== '.html') {
-        return next();
-    }
-    // For any other path or html file, redirect to the main welcome screen
+    if (extension && extension !== '.html') return next();
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 async function startServer() {
     try {
-        // Ensure the data directory exists
         await fs.mkdir(DATA_DIR, { recursive: true });
-        
-        app.listen(port, () => {
-          console.log(`Server is running on http://localhost:${port}`);
-        });
+        app.listen(port, () => console.log(`Server is running on http://localhost:${port}`));
     } catch (error) {
         console.error("Failed to start server:", error);
         process.exit(1);

@@ -22,30 +22,8 @@
              <div class="container header-content">
                 <div class="logo">
                     <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <filter id="glow-filter" x="-50%" y="-50%" width="200%" height="200%">
-                                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"></feGaussianBlur>
-                                <feMerge>
-                                    <feMergeNode in="blur"></feMergeNode>
-                                    <feMergeNode in="SourceGraphic"></feMergeNode>
-                                </feMerge>
-                            </filter>
-                        </defs>
-                        <g filter="url(#glow-filter)">
-                            <path d="M50 15 C 30 15, 30 40, 50 40 C 70 40, 70 15, 50 15 Z" fill="none" stroke="var(--primary)" stroke-width="2.5"></path>
-                            <path d="M50 40 C 40 40, 35 50, 35 60 S 40 80, 50 85 C 60 80, 65 70, 65 60 S 60 40, 50 40 Z" fill="none" stroke="var(--primary)" stroke-width="2.5"></path>
-                            <line x1="50" y1="40" x2="50" y2="85" stroke="var(--primary)" stroke-width="2.5"></line>
-                            <path d="M35 60 C 25 60, 25 50, 30 50" fill="none" stroke="var(--secondary)" stroke-width="2"></path>
-                            <path d="M65 60 C 75 60, 75 50, 70 50" fill="none" stroke="var(--secondary)" stroke-width="2"></path>
-                            <path d="M40 30 C 30 30, 25 45, 35 55" fill="none" stroke="var(--secondary)" stroke-width="2"></path>
-                            <path d="M60 30 C 70 30, 75 45, 65 55" fill="none" stroke="var(--secondary)" stroke-width="2"></path>
-                            <circle cx="50" cy="15" r="3" fill="var(--primary)"></circle>
-                            <circle cx="30" cy="50" r="2.5" fill="var(--secondary)"></circle>
-                            <circle cx="70" cy="50" r="2.5" fill="var(--secondary)"></circle>
-                            <circle cx="35" cy="55" r="2.5" fill="var(--secondary)"></circle>
-                            <circle cx="65" cy="55" r="2.5" fill="var(--secondary)"></circle>
-                            <circle cx="50" cy="85" r="3" fill="var(--primary)"></circle>
-                        </g>
+                        <defs><filter id="glow-filter" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"></feGaussianBlur><feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter></defs>
+                        <g filter="url(#glow-filter)"><path d="M50 15 C 30 15, 30 40, 50 40 C 70 40, 70 15, 50 15 Z" fill="none" stroke="var(--primary)" stroke-width="2.5"></path><path d="M50 40 C 40 40, 35 50, 35 60 S 40 80, 50 85 C 60 80, 65 70, 65 60 S 60 40, 50 40 Z" fill="none" stroke="var(--primary)" stroke-width="2.5"></path><line x1="50" y1="40" x2="50" y2="85" stroke="var(--primary)" stroke-width="2.5"></line><path d="M35 60 C 25 60, 25 50, 30 50" fill="none" stroke="var(--secondary)" stroke-width="2"></path><path d="M65 60 C 75 60, 75 50, 70 50" fill="none" stroke="var(--secondary)" stroke-width="2"></path><path d="M40 30 C 30 30, 25 45, 35 55" fill="none" stroke="var(--secondary)" stroke-width="2"></path><path d="M60 30 C 70 30, 75 45, 65 55" fill="none" stroke="var(--secondary)" stroke-width="2"></path><circle cx="50" cy="15" r="3" fill="var(--primary)"></circle><circle cx="30" cy="50" r="2.5" fill="var(--secondary)"></circle><circle cx="70" cy="50" r="2.5" fill="var(--secondary)"></circle><circle cx="35" cy="55" r="2.5" fill="var(--secondary)"></circle><circle cx="65" cy="55" r="2.5" fill="var(--secondary)"></circle><circle cx="50" cy="85" r="3" fill="var(--primary)"></circle></g>
                     </svg>
                     <h1>Knowledge Tester</h1>
                 </div>
@@ -53,7 +31,10 @@
                      <button id="toggle-3d-btn" class="theme-toggle-btn" aria-label="Toggle 3D visuals" title="Toggle 3D Visuals"></button>
                      <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme"></button>
                      <div id="user-controls">
-                        <span id="username-display"></span>
+                        <div id="profile-button" class="profile-button" role="button" aria-label="Open profile settings" tabindex="0">
+                            <div id="profile-avatar-default" class="profile-avatar-default"></div>
+                            <img id="profile-picture-img" src="" alt="Profile Picture" class="hidden">
+                        </div>
                         <span id="hint-counter-display" class="hint-counter"></span>
                         <button id="logout-btn" class="btn btn-secondary">Logout</button>
                     </div>
@@ -75,16 +56,8 @@
                     </div>
                     <div class="time-challenge-card-container">
                         <button id="start-time-challenge-btn" class="time-challenge-card">
-                            <div class="time-challenge-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 16 16">
-                                  <path d="M8.5 5.5a.5.5 0 0 0-1 0v3.352l-2.874.958a.5.5 0 0 0 .352.97l3.5-1.166A.5.5 0 0 0 9 8.5V5.5z"></path>
-                                  <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"></path>
-                                </svg>
-                            </div>
-                            <div class="time-challenge-text">
-                                <h3>Time Challenge</h3>
-                                <p>Answer 10 mixed questions in 150 seconds!</p>
-                            </div>
+                            <div class="time-challenge-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 16 16"><path d="M8.5 5.5a.5.5 0 0 0-1 0v3.352l-2.874.958a.5.5 0 0 0 .352.97l3.5-1.166A.5.5 0 0 0 9 8.5V5.5z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/></svg></div>
+                            <div class="time-challenge-text"><h3>Time Challenge</h3><p>Answer 10 mixed questions in 150 seconds!</p></div>
                         </button>
                     </div>
                     <div id="topic-grid" class="topic-grid"></div>
@@ -101,63 +74,73 @@
                         <button id="start-current-level-btn" class="btn btn-primary">Start Level <span id="current-level-text">1</span></button>
                         <button id="back-to-topics-btn" class="btn btn-secondary">&larr; Back to Topics</button>
                     </div>
-                    <div class="history-container">
-                        <h3 class="history-title">Attempt History</h3>
-                        <div id="history-log" class="history-log">
-                            <!-- History items will be injected here by JS -->
-                        </div>
-                    </div>
+                    <div class="history-container"><h3 class="history-title">Attempt History</h3><div id="history-log" class="history-log"></div></div>
                 </div>
             </section>
             
             <section id="quiz-screen" class="screen hidden">
-                <div class="container">
-                    <div class="quiz-container">
-                        <div class="quiz-header">
-                            <div id="quiz-timer" class="quiz-timer">02:30</div>
-                            <div id="question-counter">Question X of Y</div>
-                            <button id="hint-btn" class="btn btn-secondary btn-hint hidden" disabled>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A6 6 0 0 1 2 6zm6 8.5a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1h.5a.5.5 0 0 1 .5.5zM.034 6a5.5 5.5 0 1 1 10.932 0A5.5 5.5 0 0 1 .034 6z"/>
-                                </svg>
-                                <span>Hint</span> (<span id="hints-left"></span>)
-                            </button>
-                        </div>
-                        <div class="progress-bar-container quiz-progress"><div id="quiz-progress-bar" class="progress-bar"></div></div>
-                        <div class="quiz-body">
-                             <h2 id="question-text"></h2>
-                             <div id="options-container" class="options-grid"></div>
-                             <div id="quiz-action-buttons" class="action-buttons"></div>
-                        </div>
-                    </div>
-                </div>
+                <div class="container"><div class="quiz-container"><div class="quiz-header"><div id="quiz-timer" class="quiz-timer">02:30</div><div id="question-counter">Question X of Y</div><button id="hint-btn" class="btn btn-secondary btn-hint hidden" disabled><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A6 6 0 0 1 2 6zm6 8.5a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1h.5a.5.5 0 0 1 .5.5zM.034 6a5.5 5.5 0 1 1 10.932 0A5.5 5.5 0 0 1 .034 6z"/></svg><span>Hint</span> (<span id="hints-left"></span>)</button></div><div class="progress-bar-container quiz-progress"><div id="quiz-progress-bar" class="progress-bar"></div></div><div class="quiz-body"><h2 id="question-text"></h2><div id="options-container" class="options-grid"></div><div id="quiz-action-buttons" class="action-buttons"></div></div></div></div>
             </section>
             
             <section id="results-screen" class="screen hidden">
                 <canvas id="confetti-canvas"></canvas>
-                <div class="container text-center">
-                    <h2 class="screen-title">Level Complete!</h2>
-                    <p id="results-topic-text" class="screen-subtitle"></p>
-                    <div class="final-score"><span id="final-score-value">0</span>/<span id="total-questions-value">10</span></div>
-                    <div class="score-details">
-                        <div><p id="correct-answers" class="correct"></p><span>CORRECT</span></div>
-                        <div><p id="incorrect-answers" class="incorrect"></p><span>INCORRECT</span></div>
+                <div class="container text-center"><h2 class="screen-title">Level Complete!</h2><p id="results-topic-text" class="screen-subtitle"></p><div class="final-score"><span id="final-score-value">0</span>/<span id="total-questions-value">10</span></div><div class="score-details"><div><p id="correct-answers" class="correct"></p><span>CORRECT</span></div><div><p id="incorrect-answers" class="incorrect"></p><span>INCORRECT</span></div></div><p id="unlock-message" class="unlock-message hidden"></p><div id="results-action-buttons" class="action-buttons"></div></div>
+            </section>
+
+            <section id="profile-screen" class="screen hidden">
+                <div class="container">
+                    <div class="profile-container">
+                        <h2 class="screen-title text-center">Profile Settings</h2>
+                        <div class="profile-card">
+                            <form id="profile-form">
+                                <div class="pfp-upload-section">
+                                    <div class="pfp-container">
+                                        <img id="profile-preview-img" src="" alt="Profile Preview">
+                                        <div id="profile-preview-default" class="profile-avatar-default large"></div>
+                                    </div>
+                                    <input type="file" id="pfp-upload-input" accept="image/png, image/jpeg" class="hidden">
+                                    <button type="button" id="pfp-upload-btn" class="btn btn-secondary">Upload Picture</button>
+                                    <p class="pfp-note">Max 2MB. PNG or JPG.</p>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profile-username">Username</label>
+                                    <input type="text" id="profile-username" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profile-email">Email</label>
+                                    <input type="email" id="profile-email" disabled>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Profile</button>
+                            </form>
+                        </div>
+                        <div class="profile-card">
+                            <h3>Change Password</h3>
+                            <form id="password-form">
+                                <div class="form-group">
+                                    <label for="old-password">Old Password</label>
+                                    <input type="password" id="old-password" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-password">New Password</label>
+                                    <input type="password" id="new-password" required minlength="8" pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$">
+                                </div>
+                                <div class="form-group">
+                                    <label for="confirm-new-password">Confirm New Password</label>
+                                    <input type="password" id="confirm-new-password" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Change Password</button>
+                            </form>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="back-to-dashboard-btn" class="btn btn-secondary">&larr; Back to Dashboard</button>
+                        </div>
                     </div>
-                    <p id="unlock-message" class="unlock-message hidden"></p>
-                    <div id="results-action-buttons" class="action-buttons"></div>
                 </div>
             </section>
         </main>
         
-        <footer class="cyber-footer">
-            <p>⚡ Crafted by Awais — <span class="footer-highlight">Code. Mind. Revolution.</span> ⚡</p>
-        </footer>
-        
-        <div id="loading-overlay" class="hidden">
-            <div class="spinner"></div>
-            <p id="loading-text">Loading...</p>
-        </div>
-        
+        <footer class="cyber-footer"><p>⚡ Crafted by Awais — <span class="footer-highlight">Code. Mind. Revolution.</span> ⚡</p></footer>
+        <div id="loading-overlay" class="hidden"><div class="spinner"></div><p id="loading-text">Loading...</p></div>
         <div id="toast-container"></div>
     </div>
     <script src="js/main.js" defer></script>

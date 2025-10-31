@@ -1,4 +1,3 @@
-
 (function() {
     'use strict';
 
@@ -14,11 +13,9 @@
 
         try {
             const session = JSON.parse(sessionJSON);
-            // Check for guest session, which doesn't expire
             if (session.user === 'guest') {
                 return session;
             }
-            // Check for timeout
             if (Date.now() > session.expires) {
                 clearSession();
                 return null;
@@ -30,16 +27,13 @@
         }
     }
 
-    function saveSession(userData) {
-        if (userData === 'guest') {
+    function saveSession(userObject) {
+        if (userObject === 'guest') {
             const session = { user: 'guest' };
             localStorage.setItem(SESSION_KEY, JSON.stringify(session));
         } else {
             const session = {
-                user: {
-                    username: userData.username,
-                    email: userData.email,
-                },
+                user: userObject, // Store the full user object
                 expires: Date.now() + SESSION_TIMEOUT_MS,
             };
             localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -60,25 +54,21 @@
         const currentPath = window.location.pathname;
 
         if (session) {
-            // User is logged in
             if (publicPaths.includes(currentPath)) {
                 window.location.replace('/dashboard.html');
             }
         } else {
-            // User is not logged in
             if (protectedPaths.includes(currentPath)) {
                 window.location.replace('/');
             }
         }
     }
 
-    // Expose functions to the global scope to be used by other scripts
     window.auth = {
         getSession,
         saveSession,
         logout,
     };
     
-    // Run the check as soon as the script loads
     checkAuth();
 })();
