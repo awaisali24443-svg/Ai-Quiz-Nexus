@@ -355,11 +355,15 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.guestBanner.classList.remove('hidden');
             dom.usernameDisplay.textContent = 'Guest';
             dom.appHeader.style.top = '48px';
-            dom.mainContent.style.paddingTop = '168px';
+            // The banner is 48px high. Original padding-top is 120px. 120 + 48 = 168.
+            dom.mainContent.style.paddingTop = `${120 + 48}px`; 
         } else {
             state.isGuest = false;
             dom.guestBanner.classList.add('hidden');
             dom.usernameDisplay.textContent = state.session.user.username;
+            // Reset styles for registered users
+            dom.appHeader.style.top = '';
+            dom.mainContent.style.paddingTop = '';
         }
         
         loadProgress();
