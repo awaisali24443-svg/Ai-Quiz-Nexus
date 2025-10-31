@@ -460,8 +460,12 @@ const navigateTo = (screenId) => {
     state.currentScreen = screenId;
     dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
     
-    const bgClass = state.currentTopic ? `bg-${state.currentTopic.id}` : 'bg-default';
-    dom.appContainer.className = bgClass;
+    if (screenId === Screen.WELCOME || screenId === Screen.AUTH) {
+        dom.appContainer.className = ''; // No special background class
+    } else {
+        const bgClass = state.currentTopic ? `bg-${state.currentTopic.id}` : 'bg-default';
+        dom.appContainer.className = bgClass;
+    }
 
     const showHeader = screenId !== Screen.WELCOME && screenId !== Screen.AUTH;
     dom.appHeader.classList.toggle('hidden', !showHeader);

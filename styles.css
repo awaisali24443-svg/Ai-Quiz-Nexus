@@ -1,5 +1,5 @@
 :root {
-    --bg-dark: #0A0F1F;
+    --bg-dark: #000000;
     --primary: #1F9CFF; /* Bright Blue */
     --secondary: #9B51E0; /* Purple */
     --accent-green: #00F6A3;
@@ -261,21 +261,22 @@ main {
     margin: 0 auto;
 }
 .auth-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 2.5rem 2rem;
-    backdrop-filter: blur(10px);
+    background: #1C1C1E;
+    border: 1px solid #2A2A2C;
+    border-radius: 16px;
+    padding: 3rem 2.5rem;
     text-align: center;
 }
 .auth-title {
-    font-family: var(--font-title);
-    font-size: 1.75rem;
-    margin-bottom: 0.5rem;
+    font-family: var(--font-body);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
 }
 .auth-subtitle {
-    color: var(--text-medium);
-    margin-bottom: 2rem;
+    color: #A0A0A5;
+    margin-bottom: 2.5rem;
+    font-size: 1rem;
 }
 .form-group {
     margin-bottom: 1.5rem;
@@ -286,22 +287,26 @@ main {
     margin-bottom: 0.5rem;
     font-size: 0.9rem;
     font-weight: 500;
+    color: #E0E0E0;
 }
 .form-group input {
     width: 100%;
-    padding: 0.75rem 1rem;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid var(--border-color);
+    padding: 0.85rem 1rem;
+    background: #111;
+    border: 1px solid #333;
     border-radius: 8px;
     color: var(--text-light);
     font-family: var(--font-body);
     font-size: 1rem;
     transition: border-color 0.3s, box-shadow 0.3s;
 }
+.form-group input::placeholder {
+    color: #666;
+}
 .form-group input:focus {
     outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 10px rgba(31, 156, 255, 0.3);
+    border-color: #3A54B4;
+    box-shadow: 0 0 10px rgba(58, 84, 180, 0.3);
 }
 .form-group small {
     display: block;
@@ -311,24 +316,39 @@ main {
 }
 .btn-full {
     width: 100%;
-    margin-top: 0.5rem;
+}
+#login-btn {
+    background: #3A54B4;
+    color: white;
+    border: none;
+    box-shadow: none;
+    font-family: var(--font-body);
+    text-transform: none;
+    font-weight: 500;
+    border-radius: 8px;
+    margin-top: 1rem;
     margin-bottom: 1rem;
 }
-.btn.btn-secondary.btn-full {
+#login-btn:hover {
+    background: #4a63c3;
+    transform: none;
+}
+#signup-btn {
     background: transparent;
-    border-color: var(--border-color);
+    color: var(--text-light);
+    border: 1px solid #444;
+    font-family: var(--font-body);
+    text-transform: none;
+    font-weight: 500;
+    border-radius: 8px;
     margin-top: 0;
+    margin-bottom: 1rem;
 }
-.btn.btn-secondary.btn-full:hover {
-    background: var(--primary);
-    border-color: var(--primary);
+#signup-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #555;
 }
-.divider {
-    height: 1px;
-    background: var(--border-color);
-    margin: 1.5rem 0;
-}
-.btn-tertiary {
+#guest-btn {
     background: none;
     border: none;
     color: var(--text-medium);
@@ -337,8 +357,10 @@ main {
     text-transform: none;
     font-size: 0.9rem;
     padding: 0;
+    margin-top: 1rem;
+    cursor: pointer;
 }
-.btn-tertiary:hover {
+#guest-btn:hover {
     color: var(--primary);
 }
 
