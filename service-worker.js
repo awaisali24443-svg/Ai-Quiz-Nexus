@@ -21,12 +21,6 @@ self.addEventListener('install', event => {
 
 // Cache and return requests
 self.addEventListener('fetch', event => {
-    // For API calls to Gemini, always fetch from network and do not cache.
-    if (event.request.url.includes('generativelanguage.googleapis.com')) {
-        event.respondWith(fetch(event.request));
-        return;
-    }
-
     event.respondWith(
         caches.match(event.request)
         .then(response => {

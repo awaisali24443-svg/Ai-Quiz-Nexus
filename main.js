@@ -1,10 +1,5 @@
 // main.js for AI Quiz Nexus
-import { GoogleGenAI, Type } from "@google/genai";
-
 // --- CONFIGURATION & CONSTANTS ---
-
-// This API_KEY is expected to be provided by the environment.
-const API_KEY = process.env.API_KEY;
 
 const TOTAL_LEVELS = 30;
 const QUESTIONS_PER_QUIZ = 10;
@@ -90,72 +85,27 @@ function shuffleArray(array) {
 }
 
 
-// --- GEMINI API SERVICE ---
-
-const quizQuestionSchema = {
-    type: Type.OBJECT,
-    properties: {
-        question: { type: Type.STRING, description: "The quiz question text." },
-        options: { type: Type.ARRAY, items: { type: Type.STRING }, description: "An array of exactly 4 string options." },
-        correctAnswerIndex: { type: Type.INTEGER, description: "The 0-based index of the correct answer in the options array." },
-    },
-    required: ['question', 'options', 'correctAnswerIndex'],
-};
+// --- QUIZ CONTENT SERVICE ---
 
 const generateQuizQuestions = async (topicTitle, level) => {
-    if (!API_KEY) {
-        console.warn("API_KEY is not available. Using local questions.");
-        return getLocalQuizQuestions(topicTitle, level);
-    }
-
-    try {
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
-        const difficulty = getDifficulty(level);
-        const prompt = `Generate a quiz with ${QUESTIONS_PER_QUIZ} multiple-choice questions about "${topicTitle}". The difficulty must be ${difficulty} (level ${level}/${TOTAL_LEVELS}). Each question needs exactly 4 options. Ensure questions are distinct and relevant.`;
-        
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: { questions: { type: Type.ARRAY, items: quizQuestionSchema } },
-                    required: ['questions'],
-                },
-            },
-        });
-        
-        const result = JSON.parse(response.text);
-        if (result.questions && Array.isArray(result.questions) && result.questions.length > 0) {
-            return result.questions;
-        }
-        throw new Error("API returned malformed or empty data.");
-    } catch (error) {
-        console.error("Error generating quiz questions via API:", error);
-        return getLocalQuizQuestions(topicTitle, level); // Fallback to local data
-    }
+    // Always use local questions as API has been removed.
+    return getLocalQuizQuestions(topicTitle, level);
 };
 
 const generateAiFeedback = async (topicTitle, score) => {
-    if (!API_KEY) {
-        return "Great effort! Keep practicing to master this topic.";
-    }
-    
-    try {
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
-        const prompt = `A user scored ${score}/${QUESTIONS_PER_QUIZ} on a quiz about "${topicTitle}". Provide a brief, encouraging, and constructive feedback message (2-3 sentences).`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating AI feedback:", error);
-        return "Great effort! Keep practicing to master this topic.";
+    // Static feedback is provided since API is removed.
+    if (score >= 8) {
+        return `Excellent work on the ${topicTitle} quiz! A score of ${score}/${QUESTIONS_PER_QUIZ} is impressive. You have a strong grasp of the subject!`;
+    } else if (score >= SCORE_TO_UNLOCK_NEXT_LEVEL) {
+        return `Good job! You scored ${score}/${QUESTIONS_PER_QUIZ} on the ${topicTitle} quiz and unlocked the next level. Keep pushing forward!`;
+    } else {
+        return `You scored ${score}/${QUESTIONS_PER_QUIZ}. A good attempt! Review the questions and try again to master this ${topicTitle} topic.`;
     }
 };
 
-// --- LOCAL DATA FALLBACK ---
+// --- LOCAL DATA ---
 const getLocalQuizQuestions = (topicTitle, level) => {
-    console.warn(`Using local questions for ${topicTitle} - Level ${level}.`);
+    console.log(`Using local questions for ${topicTitle} - Level ${level}.`);
     if (localQuestions[topicTitle] && localQuestions[topicTitle][level]) {
         const levelQuestions = [...localQuestions[topicTitle][level]];
         const shuffled = shuffleArray(levelQuestions).slice(0, QUESTIONS_PER_QUIZ);
@@ -386,7 +336,7 @@ const handleNextQuestion = () => {
 
 const startQuiz = async () => {
     resetQuizState();
-    showLoading('Generating AI Quiz...');
+    showLoading('Preparing Quiz...');
     const questions = await generateQuizQuestions(state.currentTopic.title, state.currentLevel);
     hideLoading();
     if (questions && questions.length > 0) {
@@ -394,7 +344,7 @@ const startQuiz = async () => {
         renderQuizQuestion();
         startTimer();
     } else {
-        alert("Failed to load quiz questions. Please check your connection and try again.");
+        alert("Failed to load quiz questions. Please try again.");
         navigateTo(Screen.LEVEL);
     }
 };
