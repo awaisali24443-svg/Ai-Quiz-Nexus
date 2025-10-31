@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - AI Quiz Nexus</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app-container">
+        <div id="animated-bg-container">
+            <div class="bg-layer grid-bg"></div>
+            <div class="bg-layer matrix-bg"><canvas id="matrix-canvas"></canvas></div>
+            <div class="bg-layer dna-bg"></div>
+            <div class="bg-layer circuit-bg"></div>
+            <div class="bg-layer starfield"></div>
+            <div class="bg-layer islamic-bg"></div>
+            <div class="bg-layer history-bg"></div>
+            <div class="bg-layer world-bg"></div>
+            <div class="bg-layer science-bg"></div>
+            <div class="bg-layer math-bg"></div>
+        </div>
+        
+        <header id="app-header">
+             <div class="container header-content">
+                <div class="logo">
+                    <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                    <h1>AI Quiz Nexus</h1>
+                </div>
+                <div id="header-nav-container">
+                     <div id="user-controls">
+                        <span id="username-display"></span>
+                        <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="guest-banner" class="hidden">
+            <p>You are in Guest Mode — progress won’t be saved. <a href="/signup.html">Sign up</a> to save your progress!</p>
+        </div>
+
+        <main>
+            <!-- Screens are dynamically shown/hidden by dashboard.js -->
+            <section id="home-screen" class="screen">
+                <div class="container">
+                    <div class="text-center">
+                        <h2 class="screen-title">Choose Your Challenge</h2>
+                        <p class="screen-subtitle">Select a topic to test and expand your knowledge.</p>
+                    </div>
+                    <div id="topic-grid" class="topic-grid"></div>
+                </div>
+            </section>
+
+            <section id="level-screen" class="screen hidden">
+                <div class="container text-center">
+                    <h2 id="level-topic-title" class="screen-title"></h2>
+                    <p id="level-progress-text" class="screen-subtitle"></p>
+                    <div class="progress-bar-container"><div id="level-progress-bar" class="progress-bar"></div></div>
+                    <div id="level-grid" class="level-grid"></div>
+                    <div class="action-buttons">
+                        <button id="start-current-level-btn" class="btn btn-primary">Start Level <span id="current-level-text">1</span></button>
+                        <button id="back-to-topics-btn" class="btn btn-secondary">&larr; Back to Topics</button>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="quiz-screen" class="screen hidden">
+                <div class="container">
+                    <div class="quiz-container">
+                        <div class="quiz-header">
+                            <div id="question-counter">Question X of Y</div>
+                        </div>
+                        <div class="progress-bar-container quiz-progress"><div id="quiz-progress-bar" class="progress-bar"></div></div>
+                        <div class="quiz-body">
+                             <h2 id="question-text"></h2>
+                             <div id="options-container" class="options-grid"></div>
+                             <div id="quiz-action-buttons" class="action-buttons"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="results-screen" class="screen hidden">
+                <canvas id="confetti-canvas"></canvas>
+                <div class="container text-center">
+                    <h2 class="screen-title">Level Complete!</h2>
+                    <p id="results-topic-text" class="screen-subtitle"></p>
+                    <div class="final-score"><span id="final-score-value">0</span>/<span id="total-questions-value">10</span></div>
+                    <div class="score-details">
+                        <div><p id="correct-answers" class="correct"></p><span>CORRECT</span></div>
+                        <div><p id="incorrect-answers" class="incorrect"></p><span>INCORRECT</span></div>
+                    </div>
+                    <p id="unlock-message" class="unlock-message hidden"></p>
+                    <div id="results-action-buttons" class="action-buttons"></div>
+                </div>
+            </section>
+        </main>
+        
+        <div id="loading-overlay" class="hidden">
+            <div class="spinner"></div>
+            <p id="loading-text">Loading...</p>
+        </div>
+    </div>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

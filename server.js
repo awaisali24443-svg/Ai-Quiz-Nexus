@@ -1,71 +1,118 @@
+
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs/promises';
+import bcrypt from 'bcryptjs';
 
-// Since we are using ES modules, __dirname is not available directly. This is the workaround.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// In-memory user store for demonstration purposes.
-// In a real application, you would use a persistent database like PostgreSQL, MongoDB, etc.
-const users = [
-    { name: 'Awais', email: 'test@example.com', password: 'password123' }
-];
+const USERS_FILE = path.join(__dirname, 'data', 'users.json');
 
-// Middleware to parse JSON bodies
-app.use(express.json());
+// Middleware
+app.use(express.json()); // for parsing application/json
+app.use(express.static(path.join(__dirname))); // Serve static files
 
-// Serve static files from the current directory
-app.use(express.static(__dirname));
-
-// --- API Routes for Authentication ---
-
-app.post('/api/register', (req, res) => {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password || password.length < 6) {
-        return res.status(400).json({ message: 'Name, email, and a password of at least 6 characters are required.' });
+// Helper function to read users from JSON file
+async function readUsers() {
+    try {
+        const data = await fs.readFile(USERS_FILE, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        // If file doesn't exist, return empty array
+        if (error.code === 'ENOENT') {
+            return [];
+        }
+        throw error;
     }
+}
+
+// Helper function to write users to JSON file
+async function writeUsers(users) {
+    await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+}
+
+
+// --- API Routes ---
+
+// Register a new user
+app.post('/api/register', async (req, res) => {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+        return res.status(400).json({ message: 'All fields are required.' });
+    }
+    
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(password)) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters long and contain at least one letter and one number.' });
+    }
+
+    const users = await readUsers();
 
     if (users.find(user => user.email === email)) {
-        return res.status(409).json({ message: 'A user with this email already exists.' });
+        return res.status(409).json({ message: 'This email is already registered. Please login instead.' });
     }
-    
-    // IMPORTANT: In a real-world application, ALWAYS hash passwords before saving them.
-    const newUser = { name, email, password };
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = { username, email, password: hashedPassword };
     users.push(newUser);
+    await writeUsers(users);
 
-    console.log('User registered. Current users:', users);
-    
-    // Return the new user object (excluding the password)
-    res.status(201).json({ name: newUser.name, email: newUser.email });
+    res.status(201).json({ username: newUser.username, email: newUser.email });
 });
 
-app.post('/api/login', (req, res) => {
+
+// Login a user
+app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required.' });
+    }
     
+    const users = await readUsers();
     const user = users.find(u => u.email === email);
-    
+
     if (!user) {
-        return res.status(401).json({ message: 'Incorrect email or password.' });
+        return res.status(401).json({ message: 'Invalid credentials. Please try again or sign up.' });
     }
-    
-    // IMPORTANT: In a real-world application, use a secure method to compare hashed passwords.
-    if (user.password !== password) {
-        return res.status(401).json({ message: 'Incorrect email or password.' });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+        return res.status(401).json({ message: 'Invalid credentials. Please try again or sign up.' });
     }
-    
-    // Return user data (excluding the password)
-    res.status(200).json({ name: user.name, email: user.email });
+
+    res.status(200).json({ username: user.username, email: user.email });
 });
 
 
-// A catch-all route to serve the index.html for any request that doesn't match a static file.
-// This is essential for single-page applications with client-side routing.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+// --- Serve HTML files ---
+
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.get('/signup', (req, res) => {
+    res.sendFile(path.join(__dirname, 'signup.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+// Catch-all to redirect to login for the root or any other path
+app.get('*', (req, res, next) => {
+    // This allows static file requests (like css, js) to pass through
+    if (path.extname(req.path).length > 0) {
+        return next();
+    }
+    res.sendFile(path.join(__dirname, 'login.html'));
 });
 
 app.listen(port, () => {

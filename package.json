@@ -1,13 +1,14 @@
+
 {
-  "name": "ai-quiz-nexus",
+  "name": "ai-quiz-nexus-secure",
   "version": "1.0.0",
-  "description": "AI Quiz Nexus - A multi-topic interactive quiz website",
+  "description": "AI Quiz Nexus with secure authentication",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "build": "echo \"Build not required for this static app.\""
+    "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "bcryptjs": "^2.4.3"
   }
 }
