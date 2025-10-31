@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,9 +8,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 </head>
 <body>
     <div id="app-container">
+        <div id="webgl-container"></div>
         <div id="animated-bg-container">
             <div class="bg-layer grid-bg"></div>
             <div class="bg-layer matrix-bg"><canvas id="matrix-canvas"></canvas></div>
@@ -32,6 +34,7 @@
                     <h1>AI Quiz Nexus</h1>
                 </div>
                 <div id="header-nav-container">
+                     <button id="toggle-3d-btn" class="theme-toggle-btn" aria-label="Toggle 3D visuals" title="Toggle 3D Visuals"></button>
                      <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme"></button>
                      <div id="user-controls">
                         <span id="username-display"></span>
@@ -115,6 +118,10 @@
             </section>
         </main>
         
+        <footer class="cyber-footer">
+            <p>⚡ Crafted by Awais — <span class="footer-highlight">Code. Mind. Revolution.</span> ⚡</p>
+        </footer>
+        
         <div id="loading-overlay" class="hidden">
             <div class="spinner"></div>
             <p id="loading-text">Loading...</p>
@@ -124,6 +131,6 @@
     </div>
     <script src="js/auth.js"></script>
     <script src="js/questions.js"></script>
-    <script src="js/dashboard.js"></script>
+    <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>

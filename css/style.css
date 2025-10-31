@@ -1,5 +1,3 @@
-
-
 :root {
     --bg-dark: #0a0a0a;
     --primary: #00ffff; /* Neon Cyan */
@@ -48,14 +46,34 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* --- Animated Background --- */
+/* --- 3D & Fallback Backgrounds --- */
+#webgl-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+}
+#webgl-container.visible {
+    opacity: 1;
+}
+
 #animated-bg-container {
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
     z-index: -1;
     background-color: var(--bg-dark);
+    transition: opacity 0.8s ease-in-out;
 }
+body.mode-3d #animated-bg-container {
+    opacity: 0;
+    pointer-events: none;
+}
+
 .bg-layer {
     position: absolute; top: 0; left: 0;
     width: 100%; height: 100%;
@@ -74,35 +92,6 @@ body {
     background: #000 url(https://www.transparenttextures.com/patterns/stardust.png);
     animation: move-twink-back 200s linear infinite;
 }
-.matrix-bg { background: #000; }
-#matrix-canvas { display: block; }
-.dna-bg {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40"><path fill="none" stroke="%23a855f7" stroke-width="0.5" d="M0 20c5 0 5-20 10-20s5 20 10 20 5-20 10-20 5 20 10 20 5-20 10-20 5 20 10 20 5-20 10-20M0 20c5 0 5 20 10 20s5-20 10-20 5 20 10 20 5-20 10-20 5 20 10 20 5-20 10-20 5 20 10 20"/></svg>');
-    animation: dna-scroll 10s linear infinite;
-}
-.circuit-bg {
-    background: var(--bg-dark) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><g fill="%2300ffff" fill-opacity="0.1"><rect x="0" y="0" width="50" height="50" /><rect x="50" y="50" width="50" height="50" /></g></svg>');
-    animation: circuit-pan 20s linear infinite;
-}
-.islamic-bg { 
-    background-image: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="p" patternUnits="userSpaceOnUse" width="50" height="50"><path d="M50 25L25 50L0 25L25 0z" fill="none" stroke="%23FFBD3E" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23p)"/></svg>'); 
-    background-color: #0a0a0a;
-}
-.history-bg {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="0" y="20" font-family="serif" font-size="14" fill-opacity="0.2" fill="%23FFFFFF">Lorem ipsum</text><path d="M0 50 L100 50 M50 0 L50 100" stroke="%23FFFFFF" stroke-width="0.5" stroke-opacity="0.2"/></svg>');
-}
-.world-bg {
-    background-image: radial-gradient(circle at 20% 20%, var(--primary) 1px, transparent 1px), radial-gradient(circle at 80% 80%, var(--primary) 1px, transparent 1px);
-    background-size: 50px 50px;
-}
-.science-bg {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><circle cx="25" cy="25" r="5" fill="%2300F6A3" fill-opacity="0.2"/><line x1="25" y1="25" x2="0" y2="0" stroke="%2300F6A3" stroke-width="0.5"/><line x1="25" y1="25" x2="50" y2="50" stroke="%2300F6A3" stroke-width="0.5"/></svg>');
-}
-.math-bg { 
-    background-image: linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.05) 75%), linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.05) 75%); 
-    background-size: 30px 30px; 
-    background-position: 0 0, 15px 15px;
-}
 
 body.light-mode .grid-bg,
 body.light-mode .starfield {
@@ -110,20 +99,9 @@ body.light-mode .starfield {
 }
 
 #app-container.bg-default .grid-bg { opacity: 0.1; }
-#app-container.bg-programming .matrix-bg { opacity: 1; }
-#app-container.bg-biology .dna-bg { opacity: 0.4; }
-#app-container.bg-space_astronomy .starfield { opacity: 0.8; }
-#app-container.bg-technology_ai .circuit-bg { opacity: 0.3; }
-#app-container.bg-islamic_knowledge .islamic-bg { opacity: 0.25; }
-#app-container.bg-history_geography .history-bg { opacity: 0.15; }
-#app-container.bg-science_inventions .science-bg { opacity: 0.2; }
-#app-container.bg-mathematics_logic .math-bg { opacity: 0.1; }
-#app-container.bg-world_knowledge .world-bg { opacity: 0.15; }
 
 @keyframes pan-grid { 0% { background-position: 0 0; } 100% { background-position: 1000px 1000px; } }
 @keyframes move-twink-back { from { background-position:0 0; } to { background-position:-10000px 5000px; } }
-@keyframes dna-scroll { 0% { background-position: 0 0; } 100% { background-position: -160px 0; } }
-@keyframes circuit-pan { 0% { background-position: 0 0; } 100% { background-position: 100px 100px; } }
 
 /* --- Auth Pages --- */
 .auth-page {
@@ -195,7 +173,7 @@ body.light-mode .auth-separator::before, body.light-mode .auth-separator::after 
 .auth-switch-text a:hover { text-decoration: underline; }
 .auth-error { background-color: rgba(255, 77, 77, 0.1); color: var(--danger); border: 1px solid rgba(255, 77, 77, 0.3); padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; text-align: center; }
 
-/* --- Theme Toggle --- */
+/* --- Theme Toggle & 3D Toggle --- */
 .theme-toggle-btn {
     background: transparent;
     border: 1px solid var(--border-color);
@@ -228,6 +206,11 @@ body.light-mode .theme-toggle-btn:hover {
     position: absolute;
     top: 1rem;
     right: 1rem;
+}
+#toggle-3d-btn.disabled {
+    opacity: 0.5;
+    background-color: var(--danger) !important;
+    cursor: not-allowed;
 }
 
 /* --- General & Buttons --- */
@@ -264,7 +247,7 @@ body.light-mode .btn-secondary:hover {
 .btn-full { width: 100%; }
 
 /* --- Loading Spinner --- */
-#loading-overlay { position: fixed; inset: 0; background: rgba(10, 10, 25, 0.9); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+#loading-overlay { position: fixed; inset: 0; background: rgba(10, 10, 25, 0.9); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
 body.light-mode #loading-overlay { background: rgba(255, 255, 255, 0.8); }
 .spinner { width: 60px; height: 60px; border: 5px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -272,9 +255,9 @@ body.light-mode #loading-overlay { background: rgba(255, 255, 255, 0.8); }
 .hidden { display: none !important; }
 
 /* --- Dashboard Styles --- */
-#app-container { min-height: 100vh; display: flex; flex-direction: column; }
+#app-container { min-height: 100vh; display: flex; flex-direction: column; position: relative; }
 .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
-main { flex-grow: 1; padding: 120px 0 80px; }
+main { flex-grow: 1; padding: 120px 0 80px; position: relative; z-index: 2; }
 .screen { width: 100%; animation: fadeIn 0.5s ease-in-out; }
 .screen-title { font-family: var(--font-title); font-size: 2.5rem; margin-bottom: 0.5rem; text-shadow: 0 0 10px var(--primary); }
 body.light-mode .screen-title { text-shadow: none; }
@@ -309,6 +292,52 @@ body.light-mode #hint-counter-display {
     color: var(--accent-yellow);
 }
 
+/* Footer */
+.cyber-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem 0;
+    text-align: center;
+    font-family: var(--font-title);
+    color: var(--text-medium);
+    z-index: 5;
+    background: linear-gradient(to top, rgba(10,10,10,0.8), transparent);
+}
+body.light-mode .cyber-footer {
+    background: linear-gradient(to top, rgba(255,255,255,0.8), transparent);
+}
+.cyber-footer p {
+    position: relative;
+    display: inline-block;
+}
+.cyber-footer .footer-highlight {
+    color: var(--primary);
+    text-shadow: 0 0 5px var(--primary);
+    transition: text-shadow 0.3s ease;
+}
+.cyber-footer p:hover .footer-highlight {
+    text-shadow: 0 0 15px var(--primary);
+}
+.cyber-footer p::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    bottom: -5px;
+    left: 0;
+    background-color: var(--primary);
+    transform: scaleX(0);
+    transform-origin: bottom right;
+    transition: transform 0.4s ease-out;
+}
+.cyber-footer p:hover::after {
+    transform: scaleX(1);
+    transform-origin: bottom left;
+}
+
+
 /* Guest Banner */
 #guest-banner {
     background: linear-gradient(90deg, var(--secondary), var(--primary));
@@ -334,7 +363,11 @@ body.light-mode #guest-banner a { color: #fff; }
 body.light-mode .topic-card:hover { 
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
-.topic-card .icon { color: var(--primary); margin-bottom: 1rem; font-size: 1.5rem; }
+.topic-card:hover .icon {
+    transform: scale(1.2);
+    text-shadow: 0 0 8px var(--primary);
+}
+.topic-card .icon { color: var(--primary); margin-bottom: 1rem; font-size: 1.5rem; transition: transform 0.3s ease, text-shadow 0.3s ease; }
 .topic-card h3 { font-family: var(--font-title); font-size: 1.25rem; margin-bottom: 0.5rem; }
 .topic-card p { font-size: 0.9rem; color: var(--text-medium); }
 

@@ -1,3 +1,5 @@
+import sceneManager from './3d/sceneManager.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
     
@@ -36,11 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
         headerHintCounter: document.getElementById('hint-counter-display'),
         quizHintBtn: document.getElementById('hint-btn'),
         quizHintsLeft: document.getElementById('hints-left'),
+        toggle3DBtn: document.getElementById('toggle-3d-btn'),
     };
 
     let state = {
         session: window.auth.getSession(),
         isGuest: false,
+        is3DMode: true,
         currentScreen: Screen.HOME,
         currentTopic: null,
         currentLevel: 1,
@@ -175,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const topicData = window.QUIZ_DATA[topic.id];
         let fallbackSet = topicData[`level_${level}`];
 
-        // If specific level data doesn't exist, use level 1 as a last resort
         if (!fallbackSet || fallbackSet.length === 0) {
             console.warn(`No fallback for level ${level}. Using level 1.`);
             fallbackSet = topicData['level_1'] || [];
@@ -238,10 +241,8 @@ document.addEventListener('DOMContentLoaded', () => {
         progress.scores = progress.scores || {};
         progress.history = progress.history || [];
 
-        // Update highest score for the level
         progress.scores[level] = Math.max(progress.scores[level] || 0, score);
         
-        // Add new history entry
         const historyEntry = {
             level,
             score,
@@ -252,96 +253,44 @@ document.addEventListener('DOMContentLoaded', () => {
         state.userProgress.topics[topicTitle] = progress;
         saveProgress();
     }
-
-
-    // --- RENDERING LOGIC ---
-    const TOPIC_BACKGROUND_MAP = {
-        programming: 'bg-programming',
-        biology: 'bg-biology',
-        space_astronomy: 'bg-space_astronomy',
-        technology_ai: 'bg-technology_ai',
-        islamic_knowledge: 'bg-islamic_knowledge',
-        history_geography: 'bg-history_geography',
-        science_inventions: 'bg-science_inventions',
-        mathematics_logic: 'bg-mathematics_logic',
-        world_knowledge: 'bg-world_knowledge',
-    };
-
+    
+    // --- 3D & BACKGROUNDS ---
     function updateBackground(topicId = null) {
-        // Remove all existing background classes from the app container
-        Object.values(TOPIC_BACKGROUND_MAP).forEach(bgClass => {
-            dom.appContainer.classList.remove(bgClass);
-        });
-        dom.appContainer.classList.remove('bg-default');
-
-        const backgroundClass = TOPIC_BACKGROUND_MAP[topicId];
-        if (backgroundClass) {
-            dom.appContainer.classList.add(backgroundClass);
-        } else {
-            // Fallback to default background for home screen or if no topic is active
-            dom.appContainer.classList.add('bg-default');
-        }
-    }
-
-    // Special handler for the animated matrix background
-    function handleMatrixBackground() {
-        const canvas = document.getElementById('matrix-canvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        let animationFrameId;
-
-        const resizeCanvas = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        };
-        resizeCanvas();
-
-        const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
-        const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        const nums = '0123456789';
-        const alphabet = katakana + latin + nums;
-
-        const fontSize = 16;
-        const columns = Math.ceil(canvas.width / fontSize);
-        const rainDrops = Array.from({ length: columns }).fill(1);
-
-        const draw = () => {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#00F6A3'; // Use accent green
-            ctx.font = fontSize + 'px monospace';
-
-            for (let i = 0; i < rainDrops.length; i++) {
-                const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-                ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
-
-                if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-                    rainDrops[i] = 0;
-                }
-                rainDrops[i]++;
-            }
-            animationFrameId = requestAnimationFrame(draw);
-        };
-        
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && entries[0].intersectionRatio > 0) {
-                 if (!animationFrameId) {
-                    draw();
-                }
+        if (state.is3DMode) {
+            if (topicId) {
+                sceneManager.init(topicId, document.getElementById('webgl-container'));
             } else {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
+                sceneManager.destroy();
             }
-        }, { threshold: 0 });
-
-        const matrixBgElement = document.querySelector('.matrix-bg');
-        if (matrixBgElement) {
-            observer.observe(matrixBgElement);
+        } else {
+            // Fallback to CSS backgrounds
+            dom.appContainer.classList.toggle('bg-default', !topicId);
         }
-
-        window.addEventListener('resize', resizeCanvas);
     }
     
+    function set3DMode(enabled) {
+        state.is3DMode = enabled;
+        localStorage.setItem('3DModeEnabled', enabled);
+        document.body.classList.toggle('mode-3d', enabled);
+        
+        update3DToggleButton();
+        updateBackground(state.currentTopic ? state.currentTopic.id : null);
+        
+        if (!enabled) {
+            sceneManager.destroy();
+            showToast('3D visuals disabled.');
+        } else {
+            showToast('3D visuals enabled.');
+        }
+    }
+
+    function update3DToggleButton() {
+        const icon3D = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>`;
+        const icon2D = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>`;
+        dom.toggle3DBtn.innerHTML = state.is3DMode ? icon3D : icon2D;
+    }
+    
+    // --- RENDERING LOGIC ---
     function renderHintCounters() {
         const hints = state.userProgress.totalHints;
         dom.headerHintCounter.innerHTML = `
@@ -419,7 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
             historyLog.innerHTML = `<p class="no-history-message">No attempts recorded for this topic yet.</p>`;
         }
     }
-
 
     function renderQuizQuestion() {
         const { questions, currentQuestionIndex } = state.quiz;
@@ -583,10 +531,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentScreen = screenId;
         dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
         
-        // Update background based on screen/topic
         if (screenId === Screen.HOME) {
-            state.currentTopic = null; // Clear topic when returning home
-            updateBackground(); // Set default background
+            state.currentTopic = null; 
+            updateBackground();
         } else if (state.currentTopic) {
             updateBackground(state.currentTopic.id);
         }
@@ -601,10 +548,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INITIALIZATION ---
     function init() {
-        console.log('✅ Secure AI Integrated | Adaptive Levels Active | Offline Mode Ready');
+        console.log('✅ Secure AI Integrated | Adaptive Levels Active | 3D Immersive Mode Ready');
         
         document.body.addEventListener('click', initAudio, { once: true });
-        handleMatrixBackground();
         
         window.addEventListener('online', () => showToast('✅ Back Online — AI Restored.'));
         window.addEventListener('offline', () => showToast('⚠️ You are in Offline Mode. AI is temporarily unavailable.', true));
@@ -642,6 +588,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         applyInitialTheme();
         
+        // 3D Mode Initialization
+        const webGLSupported = sceneManager.isWebGLAvailable();
+        const saved3DMode = localStorage.getItem('3DModeEnabled');
+        
+        if (!webGLSupported) {
+            set3DMode(false);
+            dom.toggle3DBtn.classList.add('disabled');
+            showToast('3D visuals not supported on this device.', true);
+        } else {
+            set3DMode(saved3DMode === null ? true : saved3DMode === 'true');
+            dom.toggle3DBtn.addEventListener('click', () => set3DMode(!state.is3DMode));
+        }
+
         if (!state.session) return;
 
         if (state.session.user === 'guest') {
