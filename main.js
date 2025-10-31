@@ -515,11 +515,6 @@ const addEventListeners = () => {
         }
     });
     document.getElementById('back-to-topics-btn').addEventListener('click', () => navigateTo(Screen.HOME));
-    document.getElementById('start-current-level-btn').addEventListener('click', () => {
-        const progress = state.userProgress[state.currentTopic.id] || { highestLevelUnlocked: 1 };
-        state.currentLevel = progress.highestLevelUnlocked;
-        navigateTo(Screen.QUIZ);
-    });
     
     // Delegated event listener for dynamically added buttons
     document.addEventListener('click', (e) => {
@@ -532,6 +527,13 @@ const addEventListeners = () => {
             case 'guest-btn':
                 navigateTo(Screen.HOME);
                 break;
+            case 'start-current-level-btn':
+                {
+                    const progress = state.userProgress[state.currentTopic.id] || { highestLevelUnlocked: 1 };
+                    state.currentLevel = progress.highestLevelUnlocked;
+                    navigateTo(Screen.QUIZ);
+                    break;
+                }
             case 'submit-answer-btn':
                 handleAnswerSubmit();
                 break;

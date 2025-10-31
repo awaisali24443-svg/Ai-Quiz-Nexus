@@ -2,10 +2,11 @@
   "name": "ai-quiz-nexus",
   "version": "1.0.0",
   "description": "AI Quiz Nexus - A multi-topic interactive quiz website",
+  "type": "module",
   "scripts": {
-    "start": "serve ."
+    "start": "node server.js"
   },
   "dependencies": {
-    "serve": "^14.0.1"
+    "express": "^4.19.2"
   }
 }

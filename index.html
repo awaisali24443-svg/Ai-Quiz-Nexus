@@ -7,7 +7,7 @@
     <meta name="keywords" content="AI, Quiz, Programming, Biology, Science, Technology, Knowledge, Offline Quiz" />
     <meta name="author" content="Awais" />
     <title>AI Quiz Nexus</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -44,6 +44,9 @@
                     <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
                     <h1>AI Quiz Nexus</h1>
                 </div>
+                <div id="header-nav-container">
+                    <!-- Nav buttons will be injected here -->
+                </div>
             </div>
         </header>
 
@@ -63,6 +66,27 @@
                     <button id="start-journey-btn" class="btn btn-primary btn-large">Start Your Journey</button>
                 </div>
             </section>
+
+            <!-- Auth Screen -->
+            <section id="auth-screen" class="screen hidden">
+                <div class="auth-container">
+                    <div class="auth-card">
+                        <h2 class="auth-title">Welcome Back</h2>
+                        <p class="auth-subtitle">Login to sync your progress or continue as a guest.</p>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" placeholder="you@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" placeholder="••••••••">
+                        </div>
+                        <button id="login-btn" class="btn btn-full">Login</button>
+                        <button id="signup-btn" class="btn btn-full">Sign Up</button>
+                        <button id="guest-btn" class="btn">Continue as Guest</button>
+                    </div>
+                </div>
+            </section>
             
             <!-- Home Screen -->
             <section id="home-screen" class="screen hidden">
@@ -73,7 +97,7 @@
                     </div>
                     <h3 class="section-title">Explore Topics</h3>
                     <div id="topic-grid" class="topic-grid">
-                        <!-- Topic cards will be injected here by script.js -->
+                        <!-- Topic cards will be injected here -->
                     </div>
                 </div>
             </section>
@@ -87,9 +111,10 @@
                         <div id="level-progress-bar" class="progress-bar"></div>
                     </div>
                     <div id="level-grid" class="level-grid">
-                        <!-- Level buttons will be injected here by script.js -->
+                        <!-- Level buttons will be injected here -->
                     </div>
                     <div class="action-buttons">
+                        <button id="start-current-level-btn" class="btn btn-primary">Start Level <span id="current-level-text">1</span></button>
                         <button id="back-to-topics-btn" class="btn btn-secondary">&larr; Back to Topics</button>
                     </div>
                 </div>
@@ -101,6 +126,7 @@
                     <div class="quiz-container">
                         <div class="quiz-header">
                             <div id="question-counter">Question X of Y</div>
+                            <div id="time-left" class="timer">00:00</div>
                         </div>
                         <div class="progress-bar-container quiz-progress">
                             <div id="quiz-progress-bar" class="progress-bar"></div>
@@ -108,7 +134,7 @@
                         <div class="quiz-body">
                              <h2 id="question-text"></h2>
                              <div id="options-container" class="options-grid">
-                                 <!-- Options will be injected here by script.js -->
+                                 <!-- Options will be injected here -->
                              </div>
                              <div id="quiz-action-buttons" class="action-buttons">
                                  <!-- Submit/Next button will be injected here -->
@@ -131,8 +157,46 @@
                         <div><p id="incorrect-answers" class="incorrect"></p><span>INCORRECT</span></div>
                     </div>
                     <p id="unlock-message" class="unlock-message hidden"></p>
+                    <div class="ai-feedback">
+                        <h3>AI Feedback</h3>
+                        <p id="ai-feedback-text">Generating feedback...</p>
+                    </div>
                     <div id="results-action-buttons" class="action-buttons">
                         <!-- Buttons injected by script.js -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Screen -->
+            <section id="profile-screen" class="screen hidden">
+                <div class="container">
+                    <div class="profile-card">
+                        <img src="https://i.pravatar.cc/100?u=aisha" alt="User Avatar" class="profile-avatar">
+                        <h2 class="profile-name">Aisha</h2>
+                        <p class="profile-status">Quiz Master</p>
+                        <div class="profile-stats">
+                            <div>
+                                <p id="stat-quizzes">0</p>
+                                <span>Quizzes Taken</span>
+                            </div>
+                            <div>
+                                <p id="stat-accuracy">0%</p>
+                                <span>Accuracy</span>
+                            </div>
+                            <div>
+                                <p id="stat-levels">0</p>
+                                <span>Levels Cleared</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>Progress</h3>
+                        <div id="profile-progress-container">
+                            <!-- Progress items will be injected here -->
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                         <button id="home-btn" class="btn btn-secondary">&larr; Back to Topics</button>
                     </div>
                 </div>
             </section>
@@ -149,7 +213,6 @@
             </p>
         </footer>
     </div>
-    <script src="questions.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
