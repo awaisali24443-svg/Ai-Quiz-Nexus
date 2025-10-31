@@ -1,27 +1,16 @@
 // main.js for AI Quiz Nexus
-
-// The user prompt is a bit confused, stating this is a React app, but it is a vanilla JS application.
-// My main fix is to defer the initialization of the GoogleGenAI client.
-// Previously, it was initialized in the global scope. If the API_KEY was missing in the deployment environment,
-// the constructor would throw an error, crashing the entire script. This prevented event listeners from being attached
-// and any UI from becoming interactive, explaining why buttons and backgrounds didn't work.
-// By moving the initialization inside the functions that actually make API calls (`generateQuizQuestions` and `generateAiFeedback`),
-// the app can now load and run perfectly fine. If the API key is missing, only the API-dependent features will fail,
-// and the app has fallbacks (mock questions) to handle this gracefully.
-
 import { GoogleGenAI, Type } from "@google/genai";
 
 // --- CONFIGURATION & CONSTANTS ---
 
-// IMPORTANT: This API_KEY is expected to be injected by the build process (e.g., Vite).
-// In a production environment, ensure the API_KEY environment variable is set during the build.
+// This API_KEY is expected to be provided by the environment.
 const API_KEY = process.env.API_KEY;
 
 const TOTAL_LEVELS = 30;
 const QUESTIONS_PER_QUIZ = 10;
 const SCORE_TO_UNLOCK_NEXT_LEVEL = 6;
 
-// Enum for screen management, makes navigation logic clearer.
+// Enum for screen management
 const Screen = {
     WELCOME: 'welcome-screen',
     AUTH: 'auth-screen',
@@ -32,21 +21,20 @@ const Screen = {
     PROFILE: 'profile-screen',
 };
 
-// Centralized topic data. Adding a new topic here is the main step to extend the app.
+// Unified topic list
 const TOPICS = [
-    { id: 'ai_robotics', title: 'AI & Robotics', description: 'Explore neural networks, machine learning, and automation.', icon: '🧠' },
-    { id: 'biology', title: 'Biology', description: 'Uncover the secrets of life, from DNA to ecosystems.', icon: '🧬' },
-    { id: 'programming', title: 'Programming', description: 'Test your knowledge of algorithms, data structures, and languages.', icon: '💻' },
-    { id: 'physics', title: 'Physics', description: 'Journey from classical mechanics to quantum phenomena.', icon: '⚛️' },
-    { id: 'chemistry', title: 'Chemistry', description: 'Dive into molecular structures, reactions, and the elements.', icon: '🧪' },
-    { id: 'mathematics', title: 'Mathematics', description: 'Challenge your mind with logic, calculus, and theorems.', icon: '🧮' },
-    { id: 'islamic_quiz', title: 'Islamic Quiz', description: 'Deepen your understanding of Islamic history and teachings.', icon: '🕌' },
-    { id: 'world_knowledge', title: 'World Knowledge', description: 'A test of general knowledge about our world.', icon: '🌍' },
-    { id: 'cos_space', title: 'Space & Astronomy', description: 'Explore the cosmos, from planets to distant galaxies.', icon: '🔭' },
+    { id: 'programming', title: 'Programming Languages', description: 'Test your knowledge of algorithms, data structures, and languages.', icon: '💻' },
+    { id: 'world_knowledge', title: 'World Knowledge', description: 'A test of general knowledge about our diverse world.', icon: '🌍' },
+    { id: 'biology', title: 'Biological Knowledge', description: 'Uncover the secrets of life, from DNA to ecosystems.', icon: '🧬' },
+    { id: 'space_astronomy', title: 'Space and Astronomy', description: 'Explore the cosmos, from planets to distant galaxies.', icon: '🔭' },
+    { id: 'technology_ai', title: 'Technology and AI', description: 'Explore neural networks, machine learning, and automation.', icon: '🧠' },
+    { id: 'history_geography', title: 'History and Geography', description: 'Journey through time and across the globe.', icon: '🗺️' },
+    { id: 'mathematics_logic', title: 'Mathematics and Logic', description: 'Challenge your mind with logic, calculus, and theorems.', icon: '🧮' },
+    { id: 'science_inventions', title: 'Science and Inventions', description: 'Discover the breakthroughs that shaped our world.', icon: '🔬' },
+    { id: 'islamic_knowledge', title: 'Islamic Knowledge', description: 'Deepen your understanding of Islamic history and teachings.', icon: '🕌' },
 ];
 
 // --- DOM ELEMENT CACHE ---
-// Caching DOM elements for performance to avoid repeated lookups.
 const dom = {
     appContainer: document.getElementById('app-container'),
     screens: document.querySelectorAll('.screen'),
@@ -59,7 +47,6 @@ const dom = {
 };
 
 // --- APPLICATION STATE ---
-// A single state object to manage the application's status.
 let state = {
     currentScreen: null,
     currentTopic: null,
@@ -77,12 +64,6 @@ let state = {
 };
 
 // --- QUIZ HELPERS ---
-
-/**
- * Determines quiz difficulty based on the level number.
- * @param {number} level - The current quiz level.
- * @returns {string} Difficulty string ('easy', 'medium', 'hard', 'expert').
- */
 const getDifficulty = (level) => {
     if (level <= 10) return 'easy';
     if (level <= 20) return 'medium';
@@ -90,11 +71,6 @@ const getDifficulty = (level) => {
     return 'expert';
 };
 
-/**
- * Gets the timer duration for a quiz based on difficulty.
- * @param {string} difficulty - The quiz difficulty.
- * @returns {number} Time in seconds.
- */
 const getTimerDuration = (difficulty) => {
     switch (difficulty) {
         case 'easy': return 50;
@@ -105,9 +81,17 @@ const getTimerDuration = (difficulty) => {
     }
 };
 
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+
 // --- GEMINI API SERVICE ---
 
-// Schema for the expected quiz question format from the Gemini API.
 const quizQuestionSchema = {
     type: Type.OBJECT,
     properties: {
@@ -118,21 +102,14 @@ const quizQuestionSchema = {
     required: ['question', 'options', 'correctAnswerIndex'],
 };
 
-/**
- * Generates quiz questions using the Gemini API.
- * @param {string} topicTitle - The title of the quiz topic.
- * @param {number} level - The current level.
- * @returns {Promise<Array<Object>|null>} An array of question objects or null on failure.
- */
 const generateQuizQuestions = async (topicTitle, level) => {
-    // FIX: Initialize the AI client here to prevent app crash on load if API key is missing.
     if (!API_KEY) {
-        console.warn("API_KEY is not available. Using mock questions.");
-        return getMockQuestions(topicTitle);
+        console.warn("API_KEY is not available. Using local questions.");
+        return getLocalQuizQuestions(topicTitle, level);
     }
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
 
     try {
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
         const difficulty = getDifficulty(level);
         const prompt = `Generate a quiz with ${QUESTIONS_PER_QUIZ} multiple-choice questions about "${topicTitle}". The difficulty must be ${difficulty} (level ${level}/${TOTAL_LEVELS}). Each question needs exactly 4 options. Ensure questions are distinct and relevant.`;
         
@@ -150,30 +127,23 @@ const generateQuizQuestions = async (topicTitle, level) => {
         });
         
         const result = JSON.parse(response.text);
-        if (result.questions && Array.isArray(result.questions) && result.questions.every(q => q.options.length === 4)) {
+        if (result.questions && Array.isArray(result.questions) && result.questions.length > 0) {
             return result.questions;
         }
-        throw new Error("API returned malformed data.");
+        throw new Error("API returned malformed or empty data.");
     } catch (error) {
-        console.error("Error generating quiz questions:", error);
-        return getMockQuestions(topicTitle); // Fallback to mock data
+        console.error("Error generating quiz questions via API:", error);
+        return getLocalQuizQuestions(topicTitle, level); // Fallback to local data
     }
 };
 
-/**
- * Generates personalized feedback for the user's quiz performance.
- * @param {string} topicTitle - The title of the quiz topic.
- * @param {number} score - The user's score.
- * @returns {Promise<string>} A feedback message.
- */
 const generateAiFeedback = async (topicTitle, score) => {
-    // FIX: Initialize the AI client here as well.
     if (!API_KEY) {
         return "Great effort! Keep practicing to master this topic.";
     }
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
-
+    
     try {
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
         const prompt = `A user scored ${score}/${QUESTIONS_PER_QUIZ} on a quiz about "${topicTitle}". Provide a brief, encouraging, and constructive feedback message (2-3 sentences).`;
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
         return response.text;
@@ -183,23 +153,30 @@ const generateAiFeedback = async (topicTitle, score) => {
     }
 };
 
-// --- MOCK DATA FALLBACK ---
-/**
- * Provides mock quiz questions if the API call fails.
- * @param {string} topic - The quiz topic.
- * @returns {Array<Object>} An array of mock question objects.
- */
-const getMockQuestions = (topic) => {
-    console.warn("Using mock questions due to API failure or offline mode.");
-    return Array.from({ length: QUESTIONS_PER_QUIZ }, (_, i) => ({
-        question: `This is mock question #${i + 1} for ${topic}. What is the correct option?`,
-        options: ["Mock Option A", "Mock Option B", "Mock Option C", "Mock Option D"],
-        correctAnswerIndex: i % 4,
-    }));
+// --- LOCAL DATA FALLBACK ---
+const getLocalQuizQuestions = (topicTitle, level) => {
+    console.warn(`Using local questions for ${topicTitle} - Level ${level}.`);
+    if (localQuestions[topicTitle] && localQuestions[topicTitle][level]) {
+        const levelQuestions = [...localQuestions[topicTitle][level]];
+        const shuffled = shuffleArray(levelQuestions).slice(0, QUESTIONS_PER_QUIZ);
+
+        // Convert question format to match the one expected by the renderer
+        return shuffled.map(q => {
+            const options = shuffleArray([...q.options]);
+            const correctIndex = options.findIndex(opt => opt === q.answer);
+            return {
+                question: q.q,
+                options: options,
+                correctAnswerIndex: correctIndex,
+            };
+        });
+    }
+    console.error(`No local questions found for topic "${topicTitle}" at level ${level}.`);
+    return null;
 };
 
+
 // --- RENDERING LOGIC ---
-// Functions responsible for updating the DOM for each screen.
 
 const renderHomeScreen = () => {
     const topicGrid = document.getElementById('topic-grid');
@@ -221,7 +198,7 @@ const renderHomeScreen = () => {
 
 const renderLevelScreen = () => {
     document.getElementById('level-topic-title').textContent = state.currentTopic.title;
-    const progress = state.userProgress[state.currentTopic.id] || { highestLevelUnlocked: 1 };
+    const progress = state.userProgress[state.currentTopic.title] || { highestLevelUnlocked: 1 };
     const completion = Math.floor(((progress.highestLevelUnlocked - 1) / TOTAL_LEVELS) * 100);
 
     document.getElementById('level-progress-text').textContent = `Level ${progress.highestLevelUnlocked} of ${TOTAL_LEVELS} (${completion}%)`;
@@ -338,7 +315,7 @@ const renderProfileScreen = () => {
 
     const container = document.getElementById('profile-progress-container');
     container.innerHTML = TOPICS.map(topic => {
-        const progress = state.userProgress[topic.id] || { highestLevelUnlocked: 1 };
+        const progress = state.userProgress[topic.title] || { highestLevelUnlocked: 1 };
         const percent = ((progress.highestLevelUnlocked - 1) / TOTAL_LEVELS * 100).toFixed(0);
         return `
             <div class="progress-item">
@@ -356,6 +333,7 @@ const renderProfileScreen = () => {
 // --- QUIZ LOGIC ---
 
 const startTimer = () => {
+    stopTimer();
     const difficulty = getDifficulty(state.currentLevel);
     let timeLeft = getTimerDuration(difficulty);
     const timerEl = document.getElementById('time-left');
@@ -370,7 +348,9 @@ const startTimer = () => {
     state.quiz.timerId = setInterval(() => {
         timeLeft--;
         updateTimerDisplay();
-        if (timeLeft <= 0) handleAnswerSubmit();
+        if (timeLeft <= 0) {
+            handleAnswerSubmit();
+        }
     }, 1000);
 };
 
@@ -396,9 +376,9 @@ const handleNextQuestion = () => {
         startTimer();
     } else {
         state.lastScore = state.quiz.score;
-        saveScore(state.currentTopic.id, state.currentLevel, state.quiz.score);
+        saveScore(state.currentTopic.title, state.currentLevel, state.quiz.score);
         if (state.quiz.score >= SCORE_TO_UNLOCK_NEXT_LEVEL) {
-            unlockNextLevel(state.currentTopic.id, state.currentLevel);
+            unlockNextLevel(state.currentTopic.title, state.currentLevel);
         }
         navigateTo(Screen.RESULTS);
     }
@@ -414,7 +394,7 @@ const startQuiz = async () => {
         renderQuizQuestion();
         startTimer();
     } else {
-        alert("Failed to load quiz questions. Please check your connection or API key and try again.");
+        alert("Failed to load quiz questions. Please check your connection and try again.");
         navigateTo(Screen.LEVEL);
     }
 };
@@ -427,20 +407,20 @@ const loadProgress = () => {
     if (saved) state.userProgress = JSON.parse(saved);
 };
 
-const unlockNextLevel = (topicId, completedLevel) => {
-    const progress = state.userProgress[topicId] || { highestLevelUnlocked: 1, scores: {} };
+const unlockNextLevel = (topicTitle, completedLevel) => {
+    const progress = state.userProgress[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
     if (completedLevel === progress.highestLevelUnlocked && completedLevel < TOTAL_LEVELS) {
         progress.highestLevelUnlocked++;
     }
-    state.userProgress[topicId] = progress;
+    state.userProgress[topicTitle] = progress;
     saveProgress();
 };
 
-const saveScore = (topicId, level, score) => {
-    const progress = state.userProgress[topicId] || { highestLevelUnlocked: 1, scores: {} };
+const saveScore = (topicTitle, level, score) => {
+    const progress = state.userProgress[topicTitle] || { highestLevelUnlocked: 1, scores: {} };
     progress.scores = progress.scores || {};
     progress.scores[level] = Math.max(progress.scores[level] || 0, score);
-    state.userProgress[topicId] = progress;
+    state.userProgress[topicTitle] = progress;
     saveProgress();
 };
 
@@ -452,20 +432,12 @@ const showLoading = (text = 'Loading...') => {
 };
 const hideLoading = () => dom.loadingOverlay.classList.add('hidden');
 
-/**
- * Main navigation function. Switches between screens and triggers renders.
- * @param {string} screenId - The ID of the screen to show.
- */
 const navigateTo = (screenId) => {
     state.currentScreen = screenId;
     dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
     
-    if (screenId === Screen.WELCOME || screenId === Screen.AUTH) {
-        dom.appContainer.className = ''; // No special background class
-    } else {
-        const bgClass = state.currentTopic ? `bg-${state.currentTopic.id}` : 'bg-default';
-        dom.appContainer.className = bgClass;
-    }
+    const bgClass = state.currentTopic ? `bg-${state.currentTopic.id}` : 'bg-default';
+    dom.appContainer.className = bgClass;
 
     const showHeader = screenId !== Screen.WELCOME && screenId !== Screen.AUTH;
     dom.appHeader.classList.toggle('hidden', !showHeader);
@@ -473,7 +445,6 @@ const navigateTo = (screenId) => {
 
     updateHeader(screenId);
 
-    // Trigger render function for the new screen
     switch (screenId) {
         case Screen.HOME: renderHomeScreen(); break;
         case Screen.LEVEL: renderLevelScreen(); break;
@@ -503,11 +474,7 @@ const updateHeader = (screenId) => {
 
 // --- EVENT LISTENERS ---
 
-/**
- * Sets up all initial and delegated event listeners.
- */
 const addEventListeners = () => {
-    // Static buttons
     document.getElementById('start-journey-btn').addEventListener('click', () => navigateTo(Screen.AUTH));
     document.querySelector('.logo').addEventListener('click', () => {
         if (state.currentScreen !== Screen.WELCOME && state.currentScreen !== Screen.AUTH) {
@@ -516,7 +483,6 @@ const addEventListeners = () => {
     });
     document.getElementById('back-to-topics-btn').addEventListener('click', () => navigateTo(Screen.HOME));
     
-    // Delegated event listener for dynamically added buttons
     document.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target) return;
@@ -529,7 +495,7 @@ const addEventListeners = () => {
                 break;
             case 'start-current-level-btn':
                 {
-                    const progress = state.userProgress[state.currentTopic.id] || { highestLevelUnlocked: 1 };
+                    const progress = state.userProgress[state.currentTopic.title] || { highestLevelUnlocked: 1 };
                     state.currentLevel = progress.highestLevelUnlocked;
                     navigateTo(Screen.QUIZ);
                     break;
@@ -568,7 +534,6 @@ const initMatrix = () => {
     const canvas = dom.matrixCanvas;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
     let animationFrameId;
 
     const setup = () => {
@@ -608,12 +573,7 @@ const initMatrix = () => {
 };
 
 // --- INITIALIZATION ---
-
-/**
- * Initializes the application.
- */
 const init = () => {
-    // Register Service Worker for offline capabilities
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./service-worker.js')
@@ -628,5 +588,145 @@ const init = () => {
     navigateTo(Screen.WELCOME);
 };
 
-// Start the application once the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', init);
+
+
+// --- LOCAL QUESTIONS DATA ---
+const localQuestions = {};
+
+function createPlaceholderLevels(topic, baseLevelData) {
+    if (!localQuestions[topic]) localQuestions[topic] = {};
+    localQuestions[topic][1] = baseLevelData;
+    for (let i = 2; i <= 30; i++) {
+        localQuestions[topic][i] = baseLevelData.map(q => ({
+            ...q,
+            q: `(L${i}) ${q.q}`
+        }));
+    }
+}
+
+// --- 1. Programming Languages ---
+createPlaceholderLevels("Programming Languages", [
+    { q: "What does HTML stand for?", options: ["Hyper Text Markup Language", "High Tech Modern Language", "Hyperlink and Text Markup Language", "Home Tool Markup Language"], answer: "Hyper Text Markup Language" },
+    { q: "Which language is primarily used for styling web pages?", options: ["HTML", "JQuery", "CSS", "Python"], answer: "CSS" },
+    { q: "What is the correct syntax for a single-line comment in JavaScript?", options: ["// This is a comment", "<!-- This is a comment -->", "# This is a comment", "/* This is a comment */"], answer: "// This is a comment" },
+    { q: "Which company developed JavaScript?", options: ["Microsoft", "Apple", "Netscape", "Google"], answer: "Netscape" },
+    { q: "What keyword is used to declare a variable in JavaScript that cannot be reassigned?", options: ["const", "var", "let", "static"], answer: "const" },
+    { q: "In Python, how do you print 'Hello, World!' to the console?", options: ["console.log('Hello, World!')", "echo 'Hello, World!'", "System.out.println('Hello, World!')", "print('Hello, World!')"], answer: "print('Hello, World!')" },
+    { q: "Which of the following is a dynamically typed language?", options: ["C++", "Java", "Python", "C#"], answer: "Python" },
+    { q: "What does SQL stand for?", options: ["Stylish Question Language", "Structured Query Language", "Statement Query Language", "Simple Question Language"], answer: "Structured Query Language" },
+    { q: "Which tag is used to define an ordered list in HTML?", options: ["<li>", "<ol>", "<ul>", "<list>"], answer: "<ol>" },
+    { q: "What is the file extension for a Python file?", options: [".py", ".pt", ".python", ".px"], answer: ".py" }
+]);
+
+// --- 2. World Knowledge ---
+createPlaceholderLevels("World Knowledge", [
+    { q: "What is the capital of Japan?", options: ["Beijing", "Seoul", "Tokyo", "Bangkok"], answer: "Tokyo" },
+    { q: "Which is the largest planet in our solar system?", options: ["Earth", "Mars", "Jupiter", "Saturn"], answer: "Jupiter" },
+    { q: "What is the longest river in the world?", options: ["Amazon", "Nile", "Yangtze", "Mississippi"], answer: "Nile" },
+    { q: "Who painted the Mona Lisa?", options: ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Claude Monet"], answer: "Leonardo da Vinci" },
+    { q: "How many continents are there?", options: ["5", "6", "7", "8"], answer: "7" },
+    { q: "What is the largest ocean on Earth?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], answer: "Pacific" },
+    { q: "In which country are the pyramids of Giza located?", options: ["Mexico", "Egypt", "Peru", "Sudan"], answer: "Egypt" },
+    { q: "What is the main currency of the United Kingdom?", options: ["Euro", "Dollar", "Pound Sterling", "Yen"], answer: "Pound Sterling" },
+    { q: "Which is the tallest mountain in the world?", options: ["K2", "Kangchenjunga", "Mount Everest", "Lhotse"], answer: "Mount Everest" },
+    { q: "What is the national animal of Australia?", options: ["Koala", "Kangaroo", "Wombat", "Emu"], answer: "Kangaroo" }
+]);
+
+// --- 3. Biological Knowledge ---
+createPlaceholderLevels("Biological Knowledge", [
+    { q: "What is the powerhouse of the cell?", options: ["Nucleus", "Ribosome", "Mitochondrion", "Golgi apparatus"], answer: "Mitochondrion" },
+    { q: "What process do plants use to make their own food?", options: ["Respiration", "Transpiration", "Photosynthesis", "Pollination"], answer: "Photosynthesis" },
+    { q: "What does DNA stand for?", options: ["Deoxyribonucleic Acid", "Dirobonucleic Acid", "Denatured Ribonucleic Acid", "Duonucleic Acid"], answer: "Deoxyribonucleic Acid" },
+    { q: "Which part of the blood is responsible for clotting?", options: ["Red Blood Cells", "White Blood Cells", "Plasma", "Platelets"], answer: "Platelets" },
+    { q: "Humans are examples of which type of animal?", options: ["Reptiles", "Amphibians", "Mammals", "Birds"], answer: "Mammals" },
+    { q: "What is the largest organ in the human body?", options: ["Liver", "Brain", "Heart", "Skin"], answer: "Skin" },
+    { q: "Which gas do plants absorb from the atmosphere?", options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"], answer: "Carbon Dioxide" },
+    { q: "What is the study of fungi called?", options: ["Botany", "Zoology", "Mycology", "Virology"], answer: "Mycology" },
+    { q: "How many bones are in the adult human body?", options: ["206", "212", "198", "220"], answer: "206" },
+    { q: "What are the building blocks of proteins?", options: ["Carbohydrates", "Lipids", "Amino Acids", "Nucleotides"], answer: "Amino Acids" }
+]);
+
+// --- 4. Space and Astronomy ---
+createPlaceholderLevels("Space and Astronomy", [
+    { q: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Mercury"], answer: "Mars" },
+    { q: "What is the name of the galaxy we live in?", options: ["Andromeda", "Triangulum", "Whirlpool", "Milky Way"], answer: "Milky Way" },
+    { q: "What is a light-year a unit of?", options: ["Time", "Distance", "Brightness", "Mass"], answer: "Distance" },
+    { q: "Who was the first human to walk on the Moon?", options: ["Buzz Aldrin", "Yuri Gagarin", "Neil Armstrong", "Michael Collins"], answer: "Neil Armstrong" },
+    { q: "What is the center of our Solar System?", options: ["The Earth", "The Sun", "Jupiter", "A Black Hole"], answer: "The Sun" },
+    { q: "Which planet is famous for its prominent rings?", options: ["Uranus", "Neptune", "Jupiter", "Saturn"], answer: "Saturn" },
+    { q: "What is the name of the force that holds planets in orbit?", options: ["Electromagnetism", "Gravity", "Friction", "The Strong Force"], answer: "Gravity" },
+    { q: "What is a large group of stars, dust, and gas bound together by gravity called?", options: ["A Solar System", "A Constellation", "A Galaxy", "A Nebula"], answer: "A Galaxy" },
+    { q: "Which is the smallest planet in our solar system?", options: ["Mercury", "Pluto", "Mars", "Venus"], answer: "Mercury" },
+    { q: "What is a shooting star?", options: ["A dying star", "A comet", "A meteoroid burning in the atmosphere", "An asteroid"], answer: "A meteoroid burning in the atmosphere" }
+]);
+
+// --- 5. Technology and AI ---
+createPlaceholderLevels("Technology and AI", [
+    { q: "What does 'AI' stand for?", options: ["Automated Intelligence", "Artificial Intelligence", "Algorithmic Interface", "Advanced Intellect"], answer: "Artificial Intelligence" },
+    { q: "Who is considered the 'father of Artificial Intelligence'?", options: ["Alan Turing", "John McCarthy", "Geoffrey Hinton", "Tim Berners-Lee"], answer: "John McCarthy" },
+    { q: "What is a 'neural network' in AI inspired by?", options: ["Computer circuits", "The human brain", "Social networks", "Ant colonies"], answer: "The human brain" },
+    { q: "What does CPU stand for?", options: ["Central Processing Unit", "Computer Personal Unit", "Central Processor Unit", "Control Processing Unit"], answer: "Central Processing Unit" },
+    { q: "What is 'Machine Learning'?", options: ["A type of computer hardware", "A field of AI that gives computers the ability to learn without being explicitly programmed", "A new programming language", "A theory that machines can think"], answer: "A field of AI that gives computers the ability to learn without being explicitly programmed" },
+    { q: "Which company developed the Python programming language?", options: ["Google", "Microsoft", "It was an open-source project led by Guido van Rossum", "Facebook"], answer: "It was an open-source project led by Guido van Rossum" },
+    { q: "What does 'IoT' stand for?", options: ["Internet of Technology", "Interface of Things", "Internet of Things", "Internal Object Tracker"], answer: "Internet of Things" },
+    { q: "What is the primary function of a router in a network?", options: ["To store data", "To display web pages", "To connect to the internet", "To direct traffic between devices and networks"], answer: "To direct traffic between devices and networks" },
+    { q: "What is 'cloud computing'?", options: ["Storing data on your personal computer", "Using a network of remote servers hosted on the Internet to store, manage, and process data", "A type of weather forecasting technology", "A new type of laptop"], answer: "Using a network of remote servers hosted on the Internet to store, manage, and process data" },
+    { q: "What does the term 'Big Data' refer to?", options: ["Large hard drives", "Extremely large and complex data sets that cannot be easily managed with traditional data-processing software", "A popular database company", "A type of computer virus"], answer: "Extremely large and complex data sets that cannot be easily managed with traditional data-processing software" }
+]);
+
+// --- 6. History and Geography ---
+createPlaceholderLevels("History and Geography", [
+    { q: "The Great Wall of China was primarily built to protect against invasions from which group?", options: ["The Romans", "The Mongols", "The Japanese", "The Vikings"], answer: "The Mongols" },
+    { q: "In which country would you find the ancient city of Machu Picchu?", options: ["Brazil", "Mexico", "Peru", "Colombia"], answer: "Peru" },
+    { q: "World War I took place between which years?", options: ["1905-1910", "1914-1918", "1929-1935", "1939-1945"], answer: "1914-1918" },
+    { q: "The Amazon River flows through which continent?", options: ["Africa", "Asia", "North America", "South America"], answer: "South America" },
+    { q: "Who was the first President of the United States?", options: ["Thomas Jefferson", "Abraham Lincoln", "George Washington", "John Adams"], answer: "George Washington" },
+    { q: "The Sahara Desert is located on which continent?", options: ["Australia", "Asia", "Africa", "South America"], answer: "Africa" },
+    { q: "The Renaissance, a period of great cultural change and artistic activity, began in which country?", options: ["France", "Spain", "Greece", "Italy"], answer: "Italy" },
+    { q: "Which country is known as the 'Land of the Rising Sun'?", options: ["China", "South Korea", "Japan", "Thailand"], answer: "Japan" },
+    { q: "The ancient Roman civilization was centered in what present-day country?", options: ["Greece", "Egypt", "Turkey", "Italy"], answer: "Italy" },
+    { q: "What is the capital of Canada?", options: ["Toronto", "Vancouver", "Montreal", "Ottawa"], answer: "Ottawa" }
+]);
+
+// --- 7. Mathematics and Logic ---
+createPlaceholderLevels("Mathematics and Logic", [
+    { q: "What is the value of Pi to two decimal places?", options: ["3.12", "3.14", "3.16", "3.18"], answer: "3.14" },
+    { q: "What is 12 multiplied by 12?", options: ["144", "124", "169", "132"], answer: "144" },
+    { q: "How many sides does a hexagon have?", options: ["5", "6", "7", "8"], answer: "6" },
+    { q: "What is the square root of 81?", options: ["7", "8", "9", "10"], answer: "9" },
+    { q: "In a right-angled triangle, what is the side opposite the right angle called?", options: ["Adjacent", "Opposite", "Hypotenuse", "Base"], answer: "Hypotenuse" },
+    { q: "If a train travels at 60 mph, how long does it take to travel 120 miles?", options: ["1 hour", "2 hours", "3 hours", "30 minutes"], answer: "2 hours" },
+    { q: "What comes next in the sequence: 2, 4, 8, 16, ...?", options: ["20", "24", "32", "64"], answer: "32" },
+    { q: "What is 5! (5 factorial)?", options: ["25", "60", "120", "720"], answer: "120" },
+    { q: "How many degrees are in a circle?", options: ["180", "270", "360", "450"], answer: "360" },
+    { q: "Which of the following numbers is a prime number?", options: ["9", "15", "21", "23"], answer: "23" }
+]);
+
+// --- 8. Science and Inventions ---
+createPlaceholderLevels("Science and Inventions", [
+    { q: "Who is credited with inventing the telephone?", options: ["Thomas Edison", "Nikola Tesla", "Alexander Graham Bell", "Guglielmo Marconi"], answer: "Alexander Graham Bell" },
+    { q: "What is the chemical symbol for water?", options: ["H2O", "CO2", "O2", "NaCl"], answer: "H2O" },
+    { q: "Who developed the theory of relativity?", options: ["Isaac Newton", "Galileo Galilei", "Albert Einstein", "Stephen Hawking"], answer: "Albert Einstein" },
+    { q: "What does a Geiger counter measure?", options: ["Temperature", "Air pressure", "Radiation", "Light intensity"], answer: "Radiation" },
+    { q: "Who invented the World Wide Web?", options: ["Bill Gates", "Steve Jobs", "Tim Berners-Lee", "Vint Cerf"], answer: "Tim Berners-Lee" },
+    { q: "What is the freezing point of water in Celsius?", options: ["32°C", "0°C", "100°C", "-10°C"], answer: "0°C" },
+    { q: "Which of these is a renewable energy source?", options: ["Natural Gas", "Coal", "Solar Power", "Oil"], answer: "Solar Power" },
+    { q: "What is the hardest natural substance on Earth?", options: ["Gold", "Iron", "Quartz", "Diamond"], answer: "Diamond" },
+    { q: "Who discovered penicillin?", options: ["Marie Curie", "Louis Pasteur", "Alexander Fleming", "Robert Koch"], answer: "Alexander Fleming" },
+    { q: "What force opposes motion between two surfaces in contact?", options: ["Gravity", "Friction", "Magnetism", "Tension"], answer: "Friction" }
+]);
+
+// --- 9. Islamic Knowledge ---
+createPlaceholderLevels("Islamic Knowledge", [
+    { q: "How many pillars of Islam are there?", options: ["3", "4", "5", "6"], answer: "5" },
+    { q: "What is the holy book of Islam?", options: ["Torah", "Bible", "Quran", "Zabur"], answer: "Quran" },
+    { q: "In which city was Prophet Muhammad (PBUH) born?", options: ["Madinah", "Jerusalem", "Makkah", "Taif"], answer: "Makkah" },
+    { q: "What is the name of the Islamic month of fasting?", options: ["Shawwal", "Ramadan", "Rajab", "Dhul Hijjah"], answer: "Ramadan" },
+    { q: "Which direction do Muslims face during prayer?", options: ["Towards Jerusalem", "Towards the Kaaba in Makkah", "East", "West"], answer: "Towards the Kaaba in Makkah" },
+    { q: "What is the annual charity payment in Islam called?", options: ["Hajj", "Sawm", "Salah", "Zakat"], answer: "Zakat" },
+    { q: "Who was the first Caliph after Prophet Muhammad (PBUH)?", options: ["Umar ibn al-Khattab", "Ali ibn Abi Talib", "Uthman ibn Affan", "Abu Bakr al-Siddiq"], answer: "Abu Bakr al-Siddiq" },
+    { q: "How many times a day are Muslims required to pray?", options: ["3", "4", "5", "6"], answer: "5" },
+    { q: "What is the pilgrimage to Makkah called?", options: ["Umrah", "Ziyarah", "Hajj", "Tawaf"], answer: "Hajj" },
+    { q: "Which angel is believed to have delivered the revelations to Prophet Muhammad (PBUH)?", options: ["Mika'il (Michael)", "Israfil (Raphael)", "Jibril (Gabriel)", "Azra'il (Azrael)"], answer: "Jibril (Gabriel)" }
+]);
