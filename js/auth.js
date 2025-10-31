@@ -6,7 +6,7 @@
     const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
     const protectedPaths = ['/dashboard.html'];
-    const publicPaths = ['/login.html', '/signup.html', '/'];
+    const publicPaths = ['/login.html', '/signup.html', '/index.html', '/'];
 
     function getSession() {
         const sessionJSON = localStorage.getItem(SESSION_KEY);
@@ -52,7 +52,7 @@
 
     function logout() {
         clearSession();
-        window.location.href = '/login.html';
+        window.location.href = '/';
     }
 
     function checkAuth() {
@@ -67,7 +67,7 @@
         } else {
             // User is not logged in
             if (protectedPaths.includes(currentPath)) {
-                window.location.replace('/login.html');
+                window.location.replace('/');
             }
         }
     }

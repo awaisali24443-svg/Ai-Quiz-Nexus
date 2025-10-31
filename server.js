@@ -20,9 +20,8 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
 // Define the root route before serving static files
 // This ensures that visiting the base URL serves the login page
-// instead of the default index.html from the static middleware.
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Middleware
@@ -184,7 +183,7 @@ app.post('/api/generate-quiz', async (req, res) => {
 // --- Serve HTML files ---
 
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/signup', (req, res) => {
@@ -195,13 +194,13 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
-// Catch-all to redirect to login for the root or any other path
+// Catch-all to redirect to login for any other path
 app.get('*', (req, res, next) => {
     // This allows static file requests (like css, js) to pass through
     if (path.extname(req.path).length > 0) {
         return next();
     }
-    res.sendFile(path.join(__dirname, 'login.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 async function startServer() {
