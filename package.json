@@ -1,11 +1,11 @@
-
 {
   "name": "ai-quiz-nexus-secure",
   "version": "1.0.0",
   "description": "AI Quiz Nexus with secure authentication",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "echo \"No build step required\""
   },
   "dependencies": {
     "express": "^4.19.2",
