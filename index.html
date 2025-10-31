@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AI Quiz Nexus - A multi-topic interactive quiz website to test and expand your knowledge across various fields from easy to expert levels." />
+    <meta name="keywords" content="AI, Quiz, Programming, Biology, Science, Technology, IQ Test, Knowledge" />
     <title>AI Quiz Nexus</title>
-    <link rel="stylesheet" href="styles.css?v=1" />
+    <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
     "path": "https://aistudiocdn.com/path@^0.12.7",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
     "express": "https://aistudiocdn.com/express@^5.1.0",
     "url": "https://aistudiocdn.com/url@^0.11.4"
   }
@@ -29,19 +31,17 @@
             <div class="bg-layer circuit-bg" id="circuit-bg"></div>
             <div class="bg-layer starfield" id="starfield"></div>
             <div class="bg-layer islamic-bg" id="islamic-bg"></div>
-            <div class="bg-layer physics-bg" id="physics-bg"></div>
-            <div class="bg-layer chemistry-bg" id="chemistry-bg"></div>
+            <div class="bg-layer history-bg" id="history-bg"></div>
+            <div class="bg-layer world-bg" id="world-bg"></div>
+            <div class="bg-layer science-bg" id="science-bg"></div>
             <div class="bg-layer math-bg" id="math-bg"></div>
         </div>
         
-        <header id="app-header">
+        <header id="app-header" class="hidden">
              <div class="container header-content">
                 <div class="logo">
                     <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
                     <h1>AI Quiz Nexus</h1>
-                </div>
-                <div id="header-nav-container">
-                    <!-- Nav buttons injected here -->
                 </div>
             </div>
         </header>
@@ -57,32 +57,8 @@
                         </svg>
                         <span class="welcome-logo-text">AI Quiz Nexus</span>
                     </div>
-                    <h2 class="welcome-headline">Master Every Field Through AI Intelligence.</h2>
+                    <h2 class="welcome-headline">Master Every Field. Challenge Your Intellect.</h2>
                     <button id="start-journey-btn" class="btn btn-primary btn-large">Start Your Journey</button>
-                </div>
-            </section>
-
-            <!-- Auth Screen -->
-            <section id="auth-screen" class="screen hidden">
-                <div class="auth-container">
-                    <div class="auth-card">
-                        <h2 class="auth-title">Welcome to AI Quiz Nexus</h2>
-                        <p class="auth-subtitle">Your journey to knowledge mastery begins here.</p>
-                        <form id="login-form">
-                            <div class="form-group">
-                                <label for="email">Email</label>
-                                <input type="email" id="email" name="email" placeholder="your.email@example.com" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="password">Password</label>
-                                <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required>
-                                <small>Password must be at least 8 characters.</small>
-                            </div>
-                            <button type="button" id="login-btn" class="btn btn-primary btn-full">Login</button>
-                            <button type="button" id="signup-btn" class="btn btn-secondary btn-full">Sign Up</button>
-                        </form>
-                        <button type="button" id="guest-btn" class="btn btn-tertiary">Continue as Guest</button>
-                    </div>
                 </div>
             </section>
             
@@ -91,7 +67,7 @@
                 <div class="container">
                     <div class="text-center">
                         <h2 class="screen-title">Choose Your Challenge</h2>
-                        <p class="screen-subtitle">Select a topic to test and expand your knowledge with AI-powered quizzes.</p>
+                        <p class="screen-subtitle">Select a topic to test and expand your knowledge.</p>
                     </div>
                     <h3 class="section-title">Explore Topics</h3>
                     <div id="topic-grid" class="topic-grid">
@@ -113,7 +89,6 @@
                     </div>
                     <div class="action-buttons">
                         <button id="back-to-topics-btn" class="btn btn-secondary">&larr; Back to Topics</button>
-                        <button id="start-current-level-btn" class="btn btn-primary">Start Level <span id="current-level-text"></span></button>
                     </div>
                 </div>
             </section>
@@ -123,7 +98,6 @@
                 <div class="container">
                     <div class="quiz-container">
                         <div class="quiz-header">
-                            <div class="timer">Time Left: <span id="time-left">00:00</span></div>
                             <div id="question-counter">Question X of Y</div>
                         </div>
                         <div class="progress-bar-container quiz-progress">
@@ -135,7 +109,7 @@
                                  <!-- Options will be injected here by script.js -->
                              </div>
                              <div id="quiz-action-buttons" class="action-buttons">
-                                 <!-- Submit/Next button will be injected here by script.js -->
+                                 <!-- Submit/Next button will be injected here -->
                              </div>
                         </div>
                     </div>
@@ -145,7 +119,7 @@
              <!-- Results Screen -->
             <section id="results-screen" class="screen hidden">
                 <div class="container text-center">
-                    <h2 class="screen-title">Quiz Complete!</h2>
+                    <h2 class="screen-title">Level Complete!</h2>
                     <p id="results-topic-text" class="screen-subtitle"></p>
                     <div class="final-score">
                         <span id="final-score-value">0</span>/<span id="total-questions-value">10</span>
@@ -158,32 +132,6 @@
                     <div id="results-action-buttons" class="action-buttons">
                         <!-- Buttons injected by script.js -->
                     </div>
-                    <div class="ai-feedback">
-                        <h3>AI Feedback</h3>
-                        <p id="ai-feedback-text">Generating feedback...</p>
-                    </div>
-                </div>
-            </section>
-
-             <!-- Profile Screen -->
-            <section id="profile-screen" class="screen hidden">
-                <div class="container">
-                    <div class="profile-card">
-                        <img src="https://i.pravatar.cc/100?u=aisha" alt="User Avatar" class="profile-avatar" />
-                        <h2 class="profile-name">Aisha Khan</h2>
-                        <p class="profile-status">Cyber Explorer</p>
-                        <div class="profile-stats">
-                            <div><p id="stat-quizzes">0</p><span>Quizzes Taken</span></div>
-                            <div><p id="stat-accuracy">0%</p><span>Accuracy</span></div>
-                            <div><p id="stat-levels">0</p><span>Levels Cleared</span></div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <h3 class="section-title">Quiz Progress & History</h3>
-                        <div id="profile-progress-container">
-                            <p class="text-medium">No quiz history yet. Start a quiz to see your progress!</p>
-                        </div>
-                    </div>
                 </div>
             </section>
         </main>
@@ -194,16 +142,12 @@
         </div>
         
         <footer id="app-footer" class="hidden">
-            <div class="container footer-content">
-                <p>© 2024 AI Quiz Nexus. All rights reserved.</p>
-                <div class="social-links">
-                    <a href="#" aria-label="Twitter"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.3 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg></a>
-                    <a href="#" aria-label="LinkedIn"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect width="4" height="12" x="2" y="9"></rect><circle cx="4" cy="4" r="2"></circle></svg></a>
-                    <a href="#" aria-label="GitHub"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path></svg></a>
-                </div>
-            </div>
+            <p class="cyber-footer">
+                ⚡ Crafted by <span class="glow-strong">Awais</span> — where logic meets attitude ⚡
+            </p>
         </footer>
     </div>
-    <script type="module" src="main.js?v=1"></script>
+    <script src="questions.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
