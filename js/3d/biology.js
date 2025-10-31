@@ -1,3 +1,5 @@
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
+
 let scene, camera, renderer, helix, particles;
 let mouseX = 0, mouseY = 0;
 let animationFrameId;
