@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="AI Quiz Nexus - A multi-topic interactive quiz website to test and expand your knowledge across various fields from easy to expert levels." />
-    <meta name="keywords" content="AI, Quiz, Programming, Biology, Science, Technology, IQ Test, Knowledge" />
+    <meta name="keywords" content="AI, Quiz, Programming, Biology, Science, Technology, Knowledge, Offline Quiz" />
+    <meta name="author" content="Awais" />
     <title>AI Quiz Nexus</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,10 +14,10 @@
 <script type="importmap">
 {
   "imports": {
-    "path": "https://aistudiocdn.com/path@^0.12.7",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
     "express": "https://aistudiocdn.com/express@^5.1.0",
-    "url": "https://aistudiocdn.com/url@^0.11.4"
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
   }
 }
 </script>
@@ -51,9 +52,10 @@
             <section id="welcome-screen" class="screen">
                 <div class="screen-content text-center">
                      <div class="welcome-logo-container">
-                        <svg class="welcome-logo-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="24" y="2.82843" width="29.9411" height="29.9411" rx="6" transform="rotate(45 24 2.82843)" fill="#4A75E6"/>
-                            <path d="M24 14.1421L14.1421 24L24 33.8579L33.8579 24L24 14.1421Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="48" height="48">
+                           <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="#00eaff" stroke-width="1.5"></path>
+                           <path d="M2 17l10 5 10-5" stroke="#00eaff" stroke-width="1.5" stroke-opacity="0.7"></path>
+                           <path d="M2 12l10 5 10-5" stroke="#00eaff" stroke-width="1.5" stroke-opacity="0.4"></path>
                         </svg>
                         <span class="welcome-logo-text">AI Quiz Nexus</span>
                     </div>

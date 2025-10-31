@@ -90,7 +90,7 @@ body {
     animation: dna-scroll 10s linear infinite;
 }
 .circuit-bg {
-    background: var(--bg-dark) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><g fill="%239B51E0" fill-opacity="0.1"><rect x="0" y="0" width="50" height="50" /><rect x="50" y="50" width="50" height="50" /></g></svg>');
+    background: var(--bg-dark) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><g fill="%2300eaff" fill-opacity="0.1"><rect x="0" y="0" width="50" height="50" /><rect x="50" y="50" width="50" height="50" /></g></svg>');
     animation: circuit-pan 20s linear infinite;
 }
 .starfield {
@@ -102,7 +102,7 @@ body {
     background-color: #001d3d;
 }
 .history-bg {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="0" y="20" font-family="serif" font-size="14" fill-opacity="0.5" fill="%23FFFFFF">Lorem ipsum</text><path d="M0 50 L100 50 M50 0 L50 100" stroke="%23FFFFFF" stroke-width="0.5" stroke-opacity="0.5"/></svg>');
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="0" y="20" font-family="serif" font-size="14" fill-opacity="0.2" fill="%23FFFFFF">Lorem ipsum</text><path d="M0 50 L100 50 M50 0 L50 100" stroke="%23FFFFFF" stroke-width="0.5" stroke-opacity="0.2"/></svg>');
 }
 .world-bg {
     background-image: radial-gradient(circle at 20% 20%, var(--primary) 1px, transparent 1px), radial-gradient(circle at 80% 80%, var(--primary) 1px, transparent 1px);
@@ -123,18 +123,18 @@ body {
 @keyframes move-twink-back { from { background-position:0 0; } to { background-position:-10000px 5000px; } }
 
 /* --- Header & Footer --- */
-#app-header, #app-footer {
+#app-header {
     position: absolute;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     z-index: 10;
+    padding: 1.25rem 0;
 }
-#app-header { top: 0; padding: 1.25rem 0; }
 #app-footer { 
-    bottom: 0; 
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
     padding: 1.25rem 0; 
-    background: linear-gradient(180deg, #001d3d, #000814);
-    position: relative;
+    background: linear-gradient(to top, #001d3d, #000814);
+    z-index: 10;
 }
 #app-footer::before {
     content: '';
@@ -156,7 +156,7 @@ body {
 }
 .cyber-footer .glow-strong {
     font-weight: 700;
-    text-shadow: 0 0 15px var(--primary);
+    text-shadow: 0 0 15px var(--primary), 0 0 20px var(--primary);
 }
 
 @keyframes pulse-text {
@@ -187,23 +187,6 @@ body {
     position: relative;
     overflow: hidden;
 }
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    transition: width 0.3s ease, height 0.3s ease;
-}
-.btn:hover::before {
-    width: 200%;
-    height: 200%;
-}
-
 .btn-primary { background: var(--primary); color: var(--bg-dark); box-shadow: 0 0 15px var(--primary); }
 .btn-primary:hover { background: var(--primary); box-shadow: 0 0 25px var(--primary), 0 0 35px var(--primary); transform: translateY(-3px); }
 .btn-primary:disabled { background: #555; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
@@ -228,7 +211,6 @@ main {
 
 /* Welcome Screen */
 .welcome-logo-container { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 2rem; }
-.welcome-logo-icon { width: 40px; height: 40px; }
 .welcome-logo-text { font-family: var(--font-body); font-size: 1.75rem; font-weight: 600; }
 .welcome-headline { font-family: var(--font-body); font-size: clamp(2.2rem, 5vw, 3.2rem); font-weight: 700; margin-bottom: 3rem; line-height: 1.2; max-width: 800px; margin-left: auto; margin-right: auto; }
 #start-journey-btn { font-family: var(--font-body); text-transform: none; padding: 0.9rem 2.2rem; font-size: 1.1rem; }
@@ -283,7 +265,9 @@ main {
 .score-details .correct { color: var(--accent-green); }
 .score-details .incorrect { color: #ff4d4d; }
 .score-details span { font-size: 0.8rem; text-transform: uppercase; color: var(--text-medium); }
-.unlock-message { color: var(--accent-green); font-size: 1.2rem; font-weight: 600; margin: 1rem 0; animation: glow 1.5s infinite alternate; }
+.unlock-message { font-size: 1.2rem; font-weight: 600; margin: 1rem 0; }
+.unlock-message:not(.hidden) { color: var(--accent-green); animation: glow 1.5s infinite alternate; }
+
 
 /* Loading Overlay & Spinner */
 #loading-overlay { position: fixed; inset: 0; background: rgba(10, 15, 31, 0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }

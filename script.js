@@ -59,7 +59,7 @@ let state = {
 // --- QUIZ DATA & LOGIC ---
 
 /**
- * Shuffles an array in place.
+ * Shuffles an array in place using the Fisher-Yates algorithm.
  * @param {Array} array The array to shuffle.
  * @returns {Array} The shuffled array.
  */
@@ -78,12 +78,15 @@ function shuffleArray(array) {
  * @returns {Array<Object>|null} An array of question objects or null if not found.
  */
 const getLocalQuizQuestions = (topicTitle, level) => {
+    // Check if the questions data exists for the given topic and level.
     if (questions[topicTitle] && questions[topicTitle][level]) {
-        const levelQuestions = [...questions[topicTitle][level]]; // Create a copy to avoid modifying the original data
+        // Create a copy to avoid modifying the original data source.
+        const levelQuestions = [...questions[topicTitle][level]]; 
+        // Shuffle the questions for variety and slice to get the desired number per quiz.
         return shuffleArray(levelQuestions).slice(0, QUESTIONS_PER_QUIZ);
     }
     console.error(`No questions found for topic "${topicTitle}" at level ${level}.`);
-    return null; // No questions available
+    return null; // Return null if no questions are available.
 };
 
 // --- RENDERING LOGIC ---
@@ -148,10 +151,10 @@ const renderQuizQuestion = () => {
     const optionsContainer = document.getElementById('options-container');
     optionsContainer.innerHTML = ''; // Clear previous options
 
-    // Shuffle options to make it more challenging
-    const shuffledOptions = shuffleArray([...question.options]);
+    // Create a combined array of correct and incorrect options to be shuffled.
+    const options = shuffleArray([...question.options]);
 
-    shuffledOptions.forEach((option) => {
+    options.forEach((option) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.textContent = option;
@@ -195,17 +198,19 @@ const renderResultsScreen = () => {
 
     const unlocked = score >= SCORE_TO_UNLOCK_NEXT_LEVEL;
     const unlockMsg = document.getElementById('unlock-message');
-    unlockMsg.classList.toggle('hidden', !unlocked);
+    
     if (unlocked) {
+        unlockMsg.classList.remove('fail');
         if (state.currentLevel < TOTAL_LEVELS) {
             unlockMsg.textContent = 'Congratulations! Next Level Unlocked!';
         } else {
             unlockMsg.textContent = 'Mastered! You have cleared all levels in this topic!';
         }
     } else {
+         unlockMsg.classList.add('fail');
          unlockMsg.textContent = `You need ${SCORE_TO_UNLOCK_NEXT_LEVEL} correct answers to unlock the next level.`;
-         unlockMsg.classList.remove('hidden');
     }
+    unlockMsg.classList.remove('hidden');
     
     document.getElementById('results-action-buttons').innerHTML = `
         ${unlocked && state.currentLevel < TOTAL_LEVELS ? '<button id="next-level-btn" class="btn btn-primary">Next Level</button>' : ''}
@@ -280,12 +285,6 @@ const saveScore = (topicTitle, level, score) => {
 };
 
 // --- NAVIGATION & UI CONTROL ---
-
-const showLoading = (text = 'Loading...') => {
-    dom.loadingText.textContent = text;
-    dom.loadingOverlay.classList.remove('hidden');
-};
-const hideLoading = () => dom.loadingOverlay.classList.add('hidden');
 
 /**
  * Main navigation function. Switches between screens and triggers renders.
