@@ -172,6 +172,10 @@ async function fetchQuizQuestions(prefetchPromise, answeredQuestions) {
     }
 }
 
+export function cleanupQuiz() {
+    stopTimer();
+}
+
 export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils, answeredQuestions = []) {
     return new Promise(async (resolve) => {
         appState = initialState;
@@ -189,6 +193,7 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
         window.addEventListener('quizComplete', onQuizComplete);
 
         resetQuizState();
+        dom.quizHintBtn.removeEventListener('click', handleHint); // Remove old listener before adding new one
         dom.quizHintBtn.addEventListener('click', handleHint);
         utils.showLoading(true, "Crafting your challenge...");
 

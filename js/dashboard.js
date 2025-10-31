@@ -345,6 +345,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- NAVIGATION ---
     async function navigateTo(screenId, data = {}) {
+        // Cleanup previous screen if necessary
+        if (state.currentScreen === Screen.QUIZ && quizControllerModule) {
+            quizControllerModule.cleanupQuiz();
+        }
+
         state.currentScreen = screenId;
         dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
         
@@ -469,11 +474,11 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.appHeader.style.top = '48px'; dom.mainContent.style.paddingTop = `${120 + 48}px`;
             dom.hintCounterDisplay.classList.add('hidden');
         } else {
+            loadProgress(); // Load progress for registered users
             updateProfilePictureUI(state.session.user.profilePicture, state.session.user.username);
             dom.hintCounterDisplay.querySelector('span').textContent = state.userProgress.totalHints;
         }
         
-        loadProgress();
         setupProfileEventHandlers();
         dom.profileButton.addEventListener('click', () => { if (!state.isGuest) navigateTo(Screen.PROFILE); });
         document.getElementById('logout-btn').addEventListener('click', () => { playSound('click'); window.auth.logout(); });

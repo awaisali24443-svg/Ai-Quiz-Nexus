@@ -14,13 +14,11 @@ const port = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
+// Serve static files first
+app.use(express.static(path.join(__dirname)));
 // Increased payload size limit to accommodate Base64 profile pictures
 app.use(express.json({ limit: '5mb' }));
-app.use(express.static(path.join(__dirname)));
+
 
 async function readUsers() {
     try {
@@ -39,6 +37,12 @@ async function writeUsers(users) {
     await fs.mkdir(DATA_DIR, { recursive: true });
     await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
 }
+
+// --- Specific Page Routes ---
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
+app.get('/signup', (req, res) => res.sendFile(path.join(__dirname, 'signup.html')));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
 
 // --- API Routes ---
 
@@ -311,16 +315,9 @@ app.get('/api/ping', (req, res) => {
     res.status(200).json({ message: 'pong' });
 });
 
-
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
-app.get('/signup', (req, res) => res.sendFile(path.join(__dirname, 'signup.html')));
-app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
-
-app.get('*', (req, res, next) => {
-    const extension = path.extname(req.path);
-    // If it's a file with an extension (like .js, .css), let express.static handle it.
-    // If it's a path without an extension, assume it's a client-side route and serve index.html.
-    if (extension) return next();
+// Wildcard for client-side routing (catch-all)
+// This should come after all other routes
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
