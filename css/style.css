@@ -1,3 +1,4 @@
+
 :root {
     --bg-dark: #0a0a1f;
     --primary: #00eaff; /* Neon Cyan */
@@ -143,6 +144,13 @@ body {
     z-index: 10;
     padding: 1.25rem 0;
 }
+
+#header-nav-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 #app-footer, .cyber-footer { 
     padding: 1rem 0;
     font-family: var(--font-title);
@@ -350,6 +358,8 @@ body.light-mode #loading-overlay { background: rgba(255, 255, 255, 0.8); }
 /* --- Responsive --- */
 @media (max-width: 768px) {
     .screen-title { font-size: 2rem; }
+    #header-nav-container #reset-progress-btn span { display: none; } /* Hide text on small screens */
+    #reset-progress-btn { padding: 0.75rem; }
     .header-content h1 { display: none; }
     .level-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
     .options-grid { grid-template-columns: 1fr; }
@@ -357,20 +367,30 @@ body.light-mode #loading-overlay { background: rgba(255, 255, 255, 0.8); }
 
 /* Theme Toggle Button */
 .theme-toggle-btn {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
     background: transparent;
-    border: none;
+    border: 2px solid var(--border-color);
     color: var(--text-medium);
     cursor: pointer;
-    padding: 0.5rem;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.3s, background-color 0.3s;
+    transition: color 0.3s, background-color 0.3s, border-color 0.3s;
 }
-.theme-toggle-btn:hover { color: var(--text-light); background-color: rgba(255, 255, 255, 0.1); }
+.theme-toggle-btn:hover {
+    color: var(--text-light);
+    background-color: var(--card-bg);
+    border-color: var(--primary);
+}
+.theme-toggle-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: var(--border-color) !important;
+    background-color: transparent !important;
+    color: var(--text-medium) !important;
+}
 
 body.light-mode .theme-toggle-btn:hover { background-color: rgba(0, 0, 0, 0.1); }
+#reset-progress-btn { text-transform: none; font-size: 0.9rem; padding: 0.5rem 1rem;}

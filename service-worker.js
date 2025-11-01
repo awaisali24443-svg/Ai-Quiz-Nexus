@@ -1,6 +1,6 @@
 
 
-const CACHE_NAME = 'knowledge-tester-v2';
+const CACHE_NAME = 'knowledge-tester-v3';
 // This list now includes all the core files needed for the app to run offline.
 const APP_SHELL_URLS = [
     '/',
