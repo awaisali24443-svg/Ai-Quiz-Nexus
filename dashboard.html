@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard - Knowledge Tester</title>
+    <title>Dashboard - AI Quiz Nexus</title>
     <link rel="stylesheet" href="css/style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,52 +15,40 @@
     <div id="app-container">
         <div id="webgl-container"></div>
         <div id="animated-bg-container">
-            <div class="bg-layer grid-bg"></div>
-            <div class="bg-layer starfield"></div>
+             <div class="bg-layer new-bg"></div>
         </div>
         
         <header id="app-header">
              <div class="container header-content">
                 <div class="logo">
-                    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <svg class="logo-icon" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                             <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                                 <stop offset="0%" style="stop-color:var(--secondary);" />
                                 <stop offset="100%" style="stop-color:var(--primary);" />
                             </linearGradient>
-                            <filter id="logo-glow" x="-50%" y="-50%" width="200%" height="200%">
-                                <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-                                <feMerge>
-                                    <feMergeNode in="blur" />
-                                    <feMergeNode in="SourceGraphic" />
-                                </feMerge>
-                            </filter>
                         </defs>
-                        <g filter="url(#logo-glow)">
-                            <path class="logo-path" d="M25 20 V 80" stroke="url(#logo-gradient)" stroke-width="8" stroke-linecap="round" fill="none" />
-                            <path class="logo-path logo-path-2" d="M75 20 L 40 50 L 75 80" stroke="url(#logo-gradient)" stroke-width="8" stroke-linecap="round" fill="none" />
-                            <circle class="logo-node" cx="25" cy="20" r="6" fill="var(--primary)" />
-                            <circle class="logo-node logo-node-2" cx="25" cy="80" r="6" fill="var(--primary)" />
-                            <circle class="logo-node logo-node-3" cx="40" cy="50" r="6" fill="var(--primary)" />
-                            <circle class="logo-node logo-node-4" cx="75" cy="20" r="6" fill="var(--secondary)" />
-                            <circle class="logo-node logo-node-5" cx="75" cy="80" r="6" fill="var(--secondary)" />
-                        </g>
+                        <path d="M20 4 L36 20 L20 36 L4 20 Z" stroke="url(#logo-gradient)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M20 12 L28 20 L20 28 L12 20 Z" stroke="url(#logo-gradient)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <h1>Knowledge Tester</h1>
+                    <h1>AI Quiz Nexus</h1>
                 </div>
                 <div id="header-nav-container">
-                     <button id="toggle-3d-btn" class="theme-toggle-btn" aria-label="Toggle 3D visuals" title="Toggle 3D Visuals"></button>
-                     <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme"></button>
+                     <nav class="header-nav-links">
+                        <a href="#" class="nav-link" id="profile-nav-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>Profile</span>
+                        </a>
+                        <a href="#" class="nav-link" id="settings-nav-link">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            <span>Settings</span>
+                        </a>
+                     </nav>
                      <div id="user-controls">
                         <div id="profile-button" class="profile-button" role="button" aria-label="Open profile settings" tabindex="0">
                             <div id="profile-avatar-default" class="profile-avatar-default"></div>
                             <img id="profile-picture-img" src="" alt="Profile Picture" class="hidden">
                         </div>
-                        <div id="hint-counter-display" class="hint-counter" title="Hints available">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A6 6 0 0 1 2 6zm6 8.5a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1h.5a.5.5 0 0 1 .5.5zM.034 6a5.5 5.5 0 1 1 10.932 0A5.5 5.5 0 0 1 .034 6z"/></svg>
-                            <span></span>
-                        </div>
-                        <button id="logout-btn" class="btn btn-secondary">Logout</button>
                     </div>
                 </div>
             </div>
@@ -74,16 +62,11 @@
             <!-- Screens are dynamically shown/hidden by dashboard.js -->
             <section id="home-screen" class="screen">
                 <div class="container">
-                    <div class="text-center">
-                        <h2 class="screen-title">Choose Your Challenge</h2>
-                        <p class="screen-subtitle">Select a topic to test and expand your knowledge, or try the time challenge.</p>
+                    <div class="home-hero">
+                        <h1 class="welcome-title-main">Welcome to AI Quiz Nexus!</h1>
+                        <p class="welcome-subtitle-main">Choose your adventure and master new fields with AI-powered quizzes.</p>
                     </div>
-                    <div class="time-challenge-card-container">
-                        <button id="start-time-challenge-btn" class="time-challenge-card">
-                            <div class="time-challenge-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 16 16"><path d="M8.5 5.5a.5.5 0 0 0-1 0v3.352l-2.874.958a.5.5 0 0 0 .352.97l3.5-1.166A.5.5 0 0 0 9 8.5V5.5z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/></svg></div>
-                            <div class="time-challenge-text"><h3>Time Challenge</h3><p>Answer 10 mixed questions in 150 seconds!</p></div>
-                        </button>
-                    </div>
+                    <h2 class="section-title">Explore Topics</h2>
                     <div id="topic-grid" class="topic-grid"></div>
                 </div>
             </section>
@@ -164,7 +147,25 @@
             </section>
         </main>
         
-        <footer class="cyber-footer"><p>⚡ Crafted by Awais — <span class="footer-highlight">Code. Mind. Revolution.</span> ⚡</p></footer>
+        <footer id="app-footer">
+            <div class="desktop-footer-content">
+                <p>Made with V</p>
+            </div>
+            <nav class="mobile-nav">
+                <button class="nav-item active" data-screen="home-screen">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span>Home</span>
+                </button>
+                 <button class="nav-item" data-screen="profile-screen">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span>Profile</span>
+                </button>
+                 <button class="nav-item" data-screen="profile-screen">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <span>Settings</span>
+                </button>
+            </nav>
+        </footer>
         <div id="loading-overlay" class="hidden"><div class="spinner"></div><p id="loading-text">Loading...</p></div>
         <div id="toast-container"></div>
     </div>

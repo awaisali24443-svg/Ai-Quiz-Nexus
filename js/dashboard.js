@@ -4,12 +4,13 @@ import sceneManager from './3d/sceneManager.js';
 // This function is exported so the dynamically loaded module can use it.
 export function getFallbackQuestions(topicTitle, level) {
     const topic = TOPICS.find(t => t.title === topicTitle);
-    if (!topic || !window.QUIZ_DATA || !window.QUIZ_DATA[topic.id]) {
+    const topicId = topic ? topic.id : topicTitle.toLowerCase().replace(/ & /g, '_').replace(/ /g, '_');
+    if (!topic || !window.QUIZ_DATA || !window.QUIZ_DATA[topicId]) {
         console.error(`No fallback questions available for topic: ${topicTitle}`);
         throw new Error('Failed to load quiz questions for this topic. Please try again later.');
     }
 
-    const topicData = window.QUIZ_DATA[topic.id];
+    const topicData = window.QUIZ_DATA[topicId];
     let fallbackLevelKey;
 
     if (level <= 10) fallbackLevelKey = 'level_1';
@@ -29,15 +30,15 @@ export function getFallbackQuestions(topicTitle, level) {
 }
 
 const TOPICS = [
-    { id: 'programming', title: 'Programming', description: 'From "Hello World" to complex algorithms, test your coding knowledge.', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>` },
-    { id: 'world_knowledge', title: 'World Knowledge', description: 'Explore capitals, cultures, and curious facts from around the globe.', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>` },
-    { id: 'biology', title: 'Biology', description: 'Dive into the science of life, from microscopic cells to entire ecosystems.', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5c-3.3 0-3.3 4 0 4h15c3.3 0 3.3-4 0-4h-4.5c-3.3 0-3.3 4 0 4h4.5c3.3 0 3.3-4 0-4H4.5z"></path><path d="M4.5 6.5c-3.3 0-3.3 4 0 4h15c3.3 0 3.3-4 0-4h-4.5c-3.3 0-3.3 4 0 4h4.5c3.3 0 3.3-4 0-4H4.5z"></path></svg>` },
-    { id: 'space_astronomy', title: 'Space', description: 'Journey through galaxies, stars, and planets in this cosmic challenge.', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10c0-4.42-2.87-8.17-7-9.58"></path><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.9 0 1.77-.12 2.6-.35"></path></svg>` },
-    { id: 'technology_ai', title: 'Technology & AI', description: 'Challenge your understanding of circuits, code, and artificial intelligence.', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect x="4" y="12" width="16" height="8" rx="2"></rect><path d="M12 12v8"></path><path d="M9 12v8"></path><path d="M15 12v8"></path><path d="M9 4h6a2 2 0 0 1 2 2v2"></path><path d="M9 8h6"></path></svg>` },
-    { id: 'history_geography', title: 'History', description: 'Travel through time and test your knowledge of historical events.', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>` },
-    { id: 'mathematics_logic', title: 'Mathematics', description: 'Solve puzzles and equations in the universal language of numbers.', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="8" y1="12" x2="16" y2="12"></line><line x1="12" y1="8" x2="12" y2="16"></line><line x1="12" y1="3" x2="12" y2="21"></line><line x1="3" y1="12" x2="21" y2="12"></line></svg>` },
-    { id: 'science_inventions', title: 'Science', description: 'From penicillin to the particle accelerator, explore groundbreaking discoveries.', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>` },
-    { id: 'islamic_knowledge', title: 'Islamic Knowledge', description: 'Delve into the rich history, principles, and wisdom of the Islamic faith.', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14.5A2.5 2.5 0 0 1 4.5 12H8a2.5 2.5 0 0 1 0 5H4.5A2.5 2.5 0 0 1 2 14.5zM22 12h-2.5a2.5 2.5 0 0 0 0 5H22"></path><path d="M12 2a10 10 0 0 0-3.5 19.34"></path><path d="M12 2a10 10 0 0 1 3.5 19.34"></path></svg>` },
+    { id: 'programming', title: 'Programming & AI', description: 'Dive into algorithms, machine learning, and advanced coding concepts. Test your knowledge in Python, C++, and AI frameworks.' },
+    { id: 'biology', title: 'Biology & Genetics', description: 'Explore the mysteries of life, from cellular structures to advanced genetic engineering and ecosystems. Test your biological insights.' },
+    { id: 'space_astronomy', title: 'Cosmology & Space', description: 'Journey through the cosmos, studying black holes, distant galaxies, and the origins of the universe. Explore cosmic phenomena.' },
+    { id: 'technology_ai', title: 'Robotics & Automation', description: 'Delve into the world of smart machines, automation principles, and future technological advancements. Design and control robotic systems.' },
+    { id: 'world_knowledge', title: 'Business & Finance', description: 'Master economic theories, market trends, and strategic business management. Analyze financial data and investment strategies.' },
+    { id: 'history_geography', title: 'Arts & Culture', description: 'Explore art history, diverse cultural movements, and creative expressions across different civilizations. Uncover artistic legacies.' },
+    { id: 'science_inventions', title: 'Medicine & Health', description: 'Understand human anatomy, physiology, and modern medical practices. Explore diseases, treatments, and public health initiatives.' },
+    { id: 'mathematics_logic', title: 'Logic & Philosophy', description: 'Challenge your mind with logical puzzles, critical thinking, and philosophical debates. Understand fundamental questions.' },
+    { id: 'islamic_knowledge', title: 'Environment & Ecology', description: 'Learn about environmental science, climate change, and sustainable practices. Protect our planet and its biodiversity.' },
 ];
 
 
@@ -179,9 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- 3D, THEME, BACKGROUNDS ---
     function updateBackground(topicId = null) {
-        let newClass = 'bg-default';
-        if (topicId) newClass = `bg-${topicId}`;
-        dom.appContainer.className = newClass;
+        // For new design, we don't switch 2D backgrounds, only 3D scenes
         if (state.is3DMode && sceneManager.isWebGLAvailable()) {
             document.body.classList.add('mode-3d');
             sceneManager.init(topicId || 'world_knowledge', dom.webGLContainer);
@@ -194,7 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function set3DMode(enabled) {
         state.is3DMode = enabled;
         localStorage.setItem('3dMode', enabled);
-        document.getElementById('toggle-3d-btn').title = enabled ? 'Disable 3D Visuals' : 'Enable 3D Visuals';
+        const toggleBtn = document.querySelector('.theme-toggle-btn[aria-label*="3D"]');
+        if(toggleBtn) toggleBtn.title = enabled ? 'Disable 3D Visuals' : 'Enable 3D Visuals';
         updateBackground(state.currentTopic?.id);
     }
     
@@ -216,7 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'topic-card';
             card.dataset.topicId = topic.id;
-            card.innerHTML = `<div class="icon">${topic.icon}</div><div><h3>${topic.title}</h3><p>${topic.description}</p></div>`;
+            card.innerHTML = `
+                <div class="topic-card-content">
+                    <h3>${topic.title}</h3>
+                    <p>${topic.description}</p>
+                </div>`;
             card.addEventListener('click', () => handleTopicSelection(topic));
             topicGrid.appendChild(card);
             observer.observe(card);
@@ -443,10 +447,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function init() {
         document.body.addEventListener('click', () => { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }, { once: true });
         
-        const toggle3dBtn = document.getElementById('toggle-3d-btn');
-        const visualsIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>`;
+        const toggle3dBtn = document.querySelector('.theme-toggle-btn[aria-label*="3D"]');
         if (toggle3dBtn) {
-            toggle3dBtn.innerHTML = visualsIcon;
             if (!sceneManager.isWebGLAvailable()) {
                 toggle3dBtn.disabled = true;
                 toggle3dBtn.classList.add('disabled');
@@ -459,7 +461,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (!state.session) {
-            // This case should be handled by auth.js redirect, but as a fallback:
             console.error("No session found on dashboard. Halting initialization.");
             return;
         }
@@ -469,18 +470,32 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.guestBanner.classList.remove('hidden');
             updateProfilePictureUI(null, 'Guest');
             dom.appHeader.style.top = '48px'; dom.mainContent.style.paddingTop = `${120 + 48}px`;
-            dom.hintCounterDisplay.classList.add('hidden');
         } else {
             loadProgress(); // Load progress for registered users
             updateProfilePictureUI(state.session.user.profilePicture, state.session.user.username);
-            dom.hintCounterDisplay.querySelector('span').textContent = state.userProgress.totalHints;
         }
         
         setupProfileEventHandlers();
+        // New nav links
+        document.getElementById('profile-nav-link').addEventListener('click', (e) => { e.preventDefault(); if (!state.isGuest) navigateTo(Screen.PROFILE); });
+        document.getElementById('settings-nav-link').addEventListener('click', (e) => { e.preventDefault(); if (!state.isGuest) navigateTo(Screen.PROFILE); });
+        // Old profile button
         dom.profileButton.addEventListener('click', () => { if (!state.isGuest) navigateTo(Screen.PROFILE); });
-        document.getElementById('logout-btn').addEventListener('click', () => { playSound('click'); window.auth.logout(); });
-        document.getElementById('start-time-challenge-btn').addEventListener('click', () => { playSound('click'); state.gameMode = 'timeChallenge'; navigateTo(Screen.QUIZ); });
         
+        // Mobile nav buttons
+        document.querySelectorAll('.mobile-nav .nav-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetScreen = btn.dataset.screen;
+                if(targetScreen) {
+                    if (targetScreen === 'profile-screen' && state.isGuest) {
+                        showToast('Please sign up to access profile.', true);
+                    } else {
+                       navigateTo(targetScreen);
+                    }
+                }
+            });
+        });
+
         document.addEventListener('click', e => {
             const btn = e.target.closest('button'); if (!btn) return;
             switch(btn.id) {
@@ -496,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
             }
         });
-        document.querySelector('.logo').addEventListener('click', () => { playSound('click'); navigateTo(Screen.HOME); });
+        document.querySelector('.logo').addEventListener('click', (e) => { e.preventDefault(); playSound('click'); navigateTo(Screen.HOME); });
 
         setInterval(() => {
             fetch('/api/ping').catch(err => console.log("Keep-alive ping failed:", err));
