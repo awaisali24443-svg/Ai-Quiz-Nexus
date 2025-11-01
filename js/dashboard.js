@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let state = {
-        session: window.auth.getSession(),
+        session: null,
         isGuest: false,
         is3DMode: true,
         currentScreen: Screen.HOME,
@@ -445,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- INITIALIZATION ---
-    function init() {
+    async function init() {
         document.body.addEventListener('click', () => { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }, { once: true });
         
         const toggle3dBtn = document.querySelector('.theme-toggle-btn[aria-label*="3D"]');
@@ -461,6 +461,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        state.session = await window.auth.getSession();
+
         if (!state.session) {
             console.error("No session found on dashboard. Halting initialization.");
             return;
