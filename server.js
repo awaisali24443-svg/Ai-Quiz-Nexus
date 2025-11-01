@@ -1,3 +1,4 @@
+
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -134,10 +135,17 @@ app.post('/api/update-profile', async (req, res) => {
     }
 
     const users = await readUsers();
-    const userIndex = users.findIndex(u => u.email === email);
+    const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (userIndex === -1) {
         return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const usernameExists = users.some((user, index) => 
+        index !== userIndex && user.username.toLowerCase() === newUsername.toLowerCase()
+    );
+    if (usernameExists) {
+        return res.status(409).json({ message: 'This username is already taken. Please choose another one.' });
     }
     
     users[userIndex].username = newUsername;
@@ -170,7 +178,7 @@ app.post('/api/change-password', async (req, res) => {
     }
 
     const users = await readUsers();
-    const user = users.find(u => u.email === email);
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
         return res.status(404).json({ message: 'User not found.' });

@@ -1,3 +1,4 @@
+
 :root {
     --bg-dark: #0a0a0a;
     --primary: #00ffff; /* Neon Cyan */
@@ -304,6 +305,14 @@ body.light-mode .profile-card { backdrop-filter: none; box-shadow: 0 4px 6px -1p
 .profile-card .form-group label { display: block; font-weight: 500; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-medium); }
 .profile-card .form-group input[disabled] { background-color: rgba(0,0,0,0.2); opacity: 0.7; cursor: not-allowed; }
 body.light-mode .profile-card .form-group input[disabled] { background-color: var(--subtle-gray); }
+.profile-card .form-note {
+    font-size: 0.85rem;
+    color: var(--text-medium);
+    margin-top: -1rem;
+    margin-bottom: 1.5rem;
+    text-align: left;
+    padding-left: 0.25rem;
+}
 
 /* Animations & History */
 @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(0, 246, 163, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(0, 246, 163, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 246, 163, 0); } }
