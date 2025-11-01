@@ -1,3 +1,4 @@
+
 import sceneManager from './3d/sceneManager.js';
 
 // This function is exported so the dynamically loaded module can use it.
@@ -367,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const progress = state.userProgress.topics[state.currentTopic?.title] || { history: [] };
                 const answeredQuestions = (progress.history || []).flatMap(h => h.questions.map(q => q.q));
 
-                const quizResult = await quizControllerModule.runQuiz(prefetchPromise, state, dom, { playSound, showLoading, showToast }, answeredQuestions);
+                const quizResult = await quizControllerModule.runQuiz(prefetchPromise, state, dom, { playSound, showLoading, showToast, getFallbackQuestions }, answeredQuestions);
                 prefetchPromise = null;
                 
                 if (quizResult.error) {

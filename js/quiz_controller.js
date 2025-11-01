@@ -1,5 +1,5 @@
+
 // This module is dynamically imported by dashboard.js only when a quiz starts.
-import { getFallbackQuestions } from './dashboard.js';
 
 let quizState = {};
 let appState = {};
@@ -148,7 +148,7 @@ async function fetchQuizQuestions(prefetchPromise, answeredQuestions) {
     if (!navigator.onLine) {
         if (appState.gameMode === 'timeChallenge') throw new Error('Time Challenge requires an internet connection.');
         utils.showToast('⚠️ AI is unavailable. Using offline questions.', true);
-        return getFallbackQuestions(appState.currentTopic.title, appState.currentLevel);
+        return utils.getFallbackQuestions(appState.currentTopic.title, appState.currentLevel);
     }
     
     try {
@@ -168,7 +168,7 @@ async function fetchQuizQuestions(prefetchPromise, answeredQuestions) {
     } catch (error) {
         utils.showToast(`AI generation failed: ${error.message}. Using offline questions.`, true);
         if (appState.gameMode === 'timeChallenge') throw new Error('Time Challenge requires the AI service.');
-        return getFallbackQuestions(appState.currentTopic.title, appState.currentLevel);
+        return utils.getFallbackQuestions(appState.currentTopic.title, appState.currentLevel);
     }
 }
 
