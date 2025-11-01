@@ -1,11 +1,10 @@
 
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
 
-let scene, camera, renderer, textGroup;
+let scene, camera, renderer;
+let meshes = [];
 let mouseX = 0, mouseY = 0;
 let animationFrameId;
-const windowHalfX = window.innerWidth / 2;
-const windowHalfY = window.innerHeight / 2;
 
 /**
  * Creates a canvas texture with the given text.
@@ -39,39 +38,39 @@ function createTextTexture(text, color, fontSize) {
 }
 
 function init3DScene(container) {
+    meshes = [];
+
     // Scene
     scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x000010, 500, 2000);
+    scene.fog = new THREE.Fog(0x000010, 500, 2500);
 
     // Camera
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 3000);
     camera.position.z = 1000;
-
-    textGroup = new THREE.Group();
     
     const blueColor = '#509ee3';
     const greyColor = '#888888';
 
+    // Snippets extracted from the user-provided image
     const codeSnippets = [
         'cin >> a;', 'cout << "b="', 'if (a < b)', 'while (!in1.eof())',
         'getline(in1, s);', 'try {', 'catch(int a)', 'return 1;',
-        '#include <iostream>', 'using namespace std;', 'int main() {', '}',
-        'str.erase(0, s.find(" "));', 'if (size == 0)', 'else',
-        'str.compare()', 'for(int i=0; i<n; i++)', 'void function()', 'class MyClass'
+        's.erase(0, s.find("]"));', 'if (a > b)', 'str.substr(0, s.find("]"));',
+        'if (size==0)', 'else', 'size=str.compare()', 'cout << a+b;', 'if (a==b)',
+        'f_out', 'cout << "\\na>b";', 'else if', 'int main()'
     ];
     
-    const binaryStrings = ['010110', '100101', '01110001', '10101011', '00101101', '11100101', '1', '0'];
+    const binaryStrings = ['0101', '1001', '011100', '101010', '001101', '111001', '1', '0'];
+    const animationBounds = 1500;
 
-    // Create code snippet planes
-    for (let i = 0; i < 150; i++) {
-        const text = codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
-        const color = Math.random() > 0.3 ? blueColor : greyColor;
-        const texture = createTextTexture(text, color, 48);
+    const createTextPlane = (text, color, fontSize, isBinary) => {
+        const texture = createTextTexture(text, color, fontSize);
         
         const material = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
-            blending: THREE.AdditiveBlending,
+            blending: isBinary ? THREE.NormalBlending : THREE.AdditiveBlending,
+            opacity: isBinary ? 0.4 : 1.0,
             depthWrite: false,
         });
         
@@ -79,49 +78,45 @@ function init3DScene(container) {
         const mesh = new THREE.Mesh(geometry, material);
 
         mesh.position.set(
-            THREE.MathUtils.randFloatSpread(2000),
-            THREE.MathUtils.randFloatSpread(2000),
-            THREE.MathUtils.randFloatSpread(2000)
-        );
-        mesh.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
+            THREE.MathUtils.randFloatSpread(animationBounds * 2),
+            THREE.MathUtils.randFloatSpread(animationBounds * 2),
+            THREE.MathUtils.randFloatSpread(animationBounds * 2)
         );
         
-        textGroup.add(mesh);
+        mesh.rotation.set(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+        );
+
+        // Custom properties for animation
+        mesh.velocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.3,
+            (Math.random() - 0.5) * 0.3,
+            (Math.random() - 0.5) * 0.3
+        );
+        mesh.rotationSpeed = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.002,
+            (Math.random() - 0.5) * 0.002,
+            (Math.random() - 0.5) * 0.002
+        );
+
+        meshes.push(mesh);
+        scene.add(mesh);
+    };
+
+    // Create code snippet planes
+    for (let i = 0; i < 250; i++) {
+        const text = codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
+        const color = Math.random() > 0.3 ? blueColor : greyColor;
+        createTextPlane(text, color, 48, false);
     }
 
     // Create binary digit planes
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < 500; i++) {
         const text = binaryStrings[Math.floor(Math.random() * binaryStrings.length)];
-        const texture = createTextTexture(text, greyColor, 32);
-        
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            opacity: 0.4,
-            depthWrite: false,
-        });
-        
-        const geometry = new THREE.PlaneGeometry(texture.image.width * 0.5, texture.image.height * 0.5);
-        const mesh = new THREE.Mesh(geometry, material);
-
-        mesh.position.set(
-            THREE.MathUtils.randFloatSpread(2000),
-            THREE.MathUtils.randFloatSpread(2000),
-            THREE.MathUtils.randFloatSpread(2000)
-        );
-        mesh.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
-        
-        textGroup.add(mesh);
+        createTextPlane(text, greyColor, 32, true);
     }
-
-    scene.add(textGroup);
 
     // Renderer
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -142,7 +137,21 @@ function render() {
     camera.position.y += (-mouseY - camera.position.y) * 0.05;
     camera.lookAt(scene.position);
 
-    textGroup.rotation.y += 0.0002;
+    const animationBounds = 1500;
+    meshes.forEach(mesh => {
+        mesh.position.add(mesh.velocity);
+        mesh.rotation.x += mesh.rotationSpeed.x;
+        mesh.rotation.y += mesh.rotationSpeed.y;
+        mesh.rotation.z += mesh.rotationSpeed.z;
+
+        // Wrap positions
+        if (mesh.position.x > animationBounds) mesh.position.x = -animationBounds;
+        if (mesh.position.x < -animationBounds) mesh.position.x = animationBounds;
+        if (mesh.position.y > animationBounds) mesh.position.y = -animationBounds;
+        if (mesh.position.y < -animationBounds) mesh.position.y = animationBounds;
+        if (mesh.position.z > animationBounds) mesh.position.z = -animationBounds;
+        if (mesh.position.z < -animationBounds) mesh.position.z = animationBounds;
+    });
 
     renderer.render(scene, camera);
 }
@@ -155,6 +164,8 @@ function onWindowResize() {
 }
 
 function onMouseMove(event) {
+    const windowHalfX = window.innerWidth / 2;
+    const windowHalfY = window.innerHeight / 2;
     mouseX = (event.clientX - windowHalfX) / 2;
     mouseY = (event.clientY - windowHalfY) / 2;
 }
@@ -180,7 +191,7 @@ function destroy3DScene() {
     scene = null;
     camera = null;
     renderer = null;
-    textGroup = null;
+    meshes = [];
 }
 
 export { init3DScene, destroy3DScene, onWindowResize, onMouseMove };
