@@ -23,10 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw error;
                 }
                 
-                // Instead of a direct redirect, reload the page.
-                // auth.js will then detect the session and redirect to the dashboard.
-                // This is a more robust way to handle the state change.
-                window.location.reload();
+                // On successful login, redirect directly to the dashboard.
+                window.location.assign('/dashboard.html');
 
             } catch (error) {
                 errorContainer.textContent = error.message || 'Login failed. Please check your credentials.';
@@ -41,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         guestBtn.addEventListener('click', () => {
             const session = window.auth.saveGuestSession();
             if (session) {
-                window.location.href = '/dashboard.html';
+                window.location.assign('/dashboard.html');
             } else {
                 errorContainer.textContent = 'Guest mode is unavailable. Please enable site data/cookies in your browser settings.';
                 errorContainer.classList.remove('hidden');

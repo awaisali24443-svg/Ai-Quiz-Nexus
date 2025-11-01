@@ -76,27 +76,18 @@ async function checkAuth() {
     // getSession() will now wait until the auth state is confirmed.
     const session = await getSession();
     const currentPath = window.location.pathname;
-    
-    // To prevent content flicker on load
-    document.body.style.visibility = 'hidden';
 
     if (session) {
         // User is logged in (or is a guest)
         if (publicPaths.includes(currentPath)) {
             // If on a public page (like login), redirect to dashboard
             window.location.replace('/dashboard.html');
-        } else {
-            // Otherwise, show the protected page content
-             document.body.style.visibility = 'visible';
         }
     } else {
         // User is not logged in
         if (protectedPaths.includes(currentPath)) {
             // If on a protected page, redirect to home/login
             window.location.replace('/');
-        } else {
-            // Otherwise, show the public page content
-            document.body.style.visibility = 'visible';
         }
     }
 }

@@ -27,25 +27,20 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL === "YOUR_SUPABASE_URL" 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- Auth Functions ---
-const signUp = (email, password) => supabase.auth.signUp({ email, password });
+const signUp = (email, password, username) => supabase.auth.signUp({
+    email,
+    password,
+    options: {
+        data: {
+            username: username
+        }
+    }
+});
 const signIn = (email, password) => supabase.auth.signInWithPassword({ email, password });
 const signOut = () => supabase.auth.signOut();
 const updateUserPassword = (newPassword) => supabase.auth.updateUser({ password: newPassword });
 
 // --- Database & Storage Functions ---
-const createProfile = async (user, username) => {
-    // Also update the user's metadata in Supabase Auth for quick access
-    await supabase.auth.updateUser({ data: { username: username } });
-    
-    const { error } = await supabase.from('profiles').insert({ 
-        id: user.id, 
-        username, 
-        email: user.email 
-    });
-    if (error) console.error('Error creating profile:', error);
-    return { error };
-};
-
 const getProfile = (user) => {
     return supabase
         .from('profiles')
@@ -142,7 +137,6 @@ export const SupabaseClient = {
     signIn,
     signOut,
     updateUserPassword,
-    createProfile,
     getProfile,
     updateProfileAndUser,
     uploadProfilePicture,

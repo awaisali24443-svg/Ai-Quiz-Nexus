@@ -32,8 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingOverlay.classList.remove('hidden');
 
             try {
-                // 1. Sign up the user with Supabase Auth
-                const { data, error: signUpError } = await SupabaseClient.signUp(email, password);
+                // 1. Sign up the user, passing username as metadata
+                const { data, error: signUpError } = await SupabaseClient.signUp(email, password, username);
 
                 if (signUpError) {
                     throw signUpError;
@@ -43,14 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      throw new Error('Registration failed. Please try again.');
                 }
                 
-                // 2. Create a profile for the new user, which also sets user_metadata
-                const { error: profileError } = await SupabaseClient.createProfile(data.user, username);
-                
-                if (profileError) {
-                    // This is a tricky state. User is created but profile failed.
-                    console.error("User created but profile creation failed:", profileError);
-                    throw new Error("Registration completed, but profile setup failed. Please contact support.");
-                }
+                // 2. Profile creation is now handled on first login (in dashboard.js)
 
                 // Instead of redirecting, show a success message to check email
                 loadingOverlay.classList.add('hidden');

@@ -520,6 +520,31 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.appHeader.style.top = '48px'; 
             dom.mainContent.style.paddingTop = '128px';
         } else {
+            // Check if a profile exists for the user. If not, this is their first login.
+            const { data: profile } = await SupabaseClient.supabase
+                .from('profiles')
+                .select('username')
+                .eq('id', state.session.user.id)
+                .single();
+            
+            if (!profile) {
+                console.log('Profile not found, creating one for new user.');
+                const username = state.session.user.user_metadata?.username || state.session.user.email.split('@')[0];
+                const { error: insertError } = await SupabaseClient.supabase.from('profiles').insert({
+                    id: state.session.user.id,
+                    username: username,
+                    email: state.session.user.email,
+                });
+
+                if (insertError) {
+                    console.error('Error creating profile on first login:', insertError);
+                    showToast(`Could not create your profile: ${insertError.message}`, true);
+                } else {
+                    // Force a refresh of the session to get the new profile data merged in
+                    state.session = await window.auth.getSession(true);
+                }
+            }
+    
             await loadProgress();
             updateProfilePictureUI(state.session.user.profile_picture_url, state.session.user.username);
         }
