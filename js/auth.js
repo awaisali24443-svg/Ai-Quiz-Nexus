@@ -11,9 +11,8 @@ const publicPaths = ['/login.html', '/signup.html', '/index.html', '/'];
  */
 function saveGuestSession() {
     try {
+        console.log('Creating new guest session.');
         const randomId = Math.random().toString(36).substring(2, 8);
-        // Create a session object that mimics the structure of a Supabase session.
-        // This ensures compatibility with the rest of the app (e.g., dashboard.js).
         const guestSession = {
             user: {
                 id: `guest-${randomId}`,
@@ -52,13 +51,18 @@ function getGuestSession() {
     }
 }
 
-// A singleton promise to get the session data, which other parts of the app can use.
 let sessionPromise = null;
 function getSession(forceRefresh = false) {
     if (sessionPromise && !forceRefresh) {
         return sessionPromise;
     }
     sessionPromise = (async () => {
+        // If Supabase connection failed, immediately return a guest session.
+        if (localStorage.getItem('db_error') === 'true') {
+            console.log("DB connection error detected, forcing local guest mode.");
+            return getGuestSession() || saveGuestSession();
+        }
+
         const { data: { session: authSession }, error } = await SupabaseClient.supabase.auth.getSession();
 
         if (error) {
@@ -72,14 +76,12 @@ function getSession(forceRefresh = false) {
                 ...authSession,
                 user: {
                     ...authSession.user,
-                    // Use profile username if available, otherwise fallback to metadata or email
                     username: profile?.username || authSession.user.user_metadata?.username || authSession.user.email,
                     profile_picture_url: profile?.profile_picture_url
                 }
             };
             return fullSession;
         }
-        // For guests, getGuestSession returns an object with a 'user' property
         return getGuestSession();
     })();
     return sessionPromise;
@@ -88,61 +90,59 @@ function getSession(forceRefresh = false) {
 async function logout() {
     await SupabaseClient.signOut();
     localStorage.removeItem(GUEST_SESSION_KEY);
-    // The onAuthStateChange listener will handle the redirect by reloading.
+    // onAuthStateChange listener will handle the redirect by reloading.
 }
 
-/**
- * Performs the main authentication check and handles page redirection.
- * This function is the single source of truth for routing decisions on page load.
- */
 const performAuthCheck = async () => {
     try {
-        const { data: { session } } = await SupabaseClient.supabase.auth.getSession();
-        const guestSession = getGuestSession();
+        const isDbError = localStorage.getItem('db_error') === 'true';
+        let session;
 
+        if (isDbError) {
+            session = null; // In case of DB error, we don't have a real session
+        } else {
+            const { data } = await SupabaseClient.supabase.auth.getSession();
+            session = data.session;
+        }
+
+        const guestSession = getGuestSession();
         const currentPath = window.location.pathname;
+
         const isUserLoggedIn = !!session;
-        const isGuest = !!guestSession;
+        const isGuest = !!guestSession || isDbError;
         const isLoggedIn = isUserLoggedIn || isGuest;
 
-        // Core redirection logic
+        console.log(`Auth Check on ${currentPath}: UserLoggedIn=${isUserLoggedIn}, isGuest=${isGuest}, DBError=${isDbError}`);
+
         if (isLoggedIn && publicPaths.includes(currentPath)) {
+            console.log('Redirecting logged-in user to dashboard...');
             window.location.replace('/dashboard.html');
         } else if (!isLoggedIn && protectedPaths.includes(currentPath)) {
+            console.log('Redirecting non-logged-in user to login...');
             window.location.replace('/');
         }
     } catch (error) {
-        console.error("Auth check failed, possibly due to network or Supabase issue.", error);
-        // As requested, fallback to guest mode if Supabase is unreachable.
-        const offlineBanner = document.getElementById('offline-banner');
-        if (offlineBanner) {
-            offlineBanner.innerHTML = '<p>Unable to reach database. Continuing in offline/guest mode.</p>';
-            offlineBanner.classList.remove('hidden');
-        }
-        
-        const guestSession = getGuestSession() || saveGuestSession(); // Ensure guest session exists
+        console.error("Auth check failed:", error);
         const currentPath = window.location.pathname;
-
-        if (guestSession && publicPaths.includes(currentPath)) {
-            window.location.replace('/dashboard.html');
+        if (protectedPaths.includes(currentPath)) {
+            window.location.replace('/');
         }
     }
 };
 
-// Listen for explicit auth state changes (login, logout) from Supabase.
 SupabaseClient.supabase.auth.onAuthStateChange((event, session) => {
-    // On SIGNED_IN or SIGNED_OUT, we know the state has definitively changed.
-    // Re-run the auth check to handle redirection.
+    console.log(`Auth state changed: ${event}`);
     if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        // A full redirect is more reliable than trying to manage state in-place.
-        performAuthCheck();
+        // Force a session refresh and re-run the auth check for redirection.
+        getSession(true).then(() => {
+            performAuthCheck();
+        });
     }
 });
 
-// Run the check once on initial page load to handle all cases.
+// Run the check once on initial page load.
 performAuthCheck();
 
-// Expose public auth methods to the window object for other scripts.
 window.auth = {
     getSession,
     logout,

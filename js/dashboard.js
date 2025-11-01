@@ -31,17 +31,17 @@ export function getFallbackQuestions(topicTitle, level) {
 }
 
 const TOPICS = [
-    { id: 'programming', title: 'Programming & AI', description: 'Dive into algorithms, machine learning, and advanced coding concepts. Test your knowledge in Python, C++, and AI frameworks.' },
-    { id: 'biology', title: 'Biology & Genetics', description: 'Explore the mysteries of life, from cellular structures to advanced genetic engineering and ecosystems. Test your biological insights.' },
-    { id: 'space_astronomy', title: 'Cosmology & Space', description: 'Journey through the cosmos, studying black holes, distant galaxies, and the origins of the universe. Explore cosmic phenomena.' },
-    { id: 'technology_ai', title: 'Robotics & Automation', description: 'Delve into the world of smart machines, automation principles, and future technological advancements. Design and control robotic systems.' },
-    { id: 'world_knowledge', title: 'Business & Finance', description: 'Master economic theories, market trends, and strategic business management. Analyze financial data and investment strategies.' },
-    { id: 'history_geography', title: 'Arts & Culture', description: 'Explore art history, diverse cultural movements, and creative expressions across different civilizations. Uncover artistic legacies.' },
-    { id: 'science_inventions', title: 'Medicine & Health', description: 'Understand human anatomy, physiology, and modern medical practices. Explore diseases, treatments, and public health initiatives.' },
-    { id: 'mathematics_logic', title: 'Logic & Philosophy', description: 'Challenge your mind with logical puzzles, critical thinking, and philosophical debates. Understand fundamental questions.' },
-    { id: 'islamic_knowledge', title: 'Environment & Ecology', description: 'Learn about environmental science, climate change, and sustainable practices. Protect our planet and its biodiversity.' },
+    { id: 'programming', title: 'Programming Languages', description: 'Test your knowledge in syntax, algorithms, and data structures across various languages.' },
+    { id: 'technology_ai', title: 'AI & Technology', description: 'Explore concepts of machine learning, neural networks, and modern tech innovations.' },
+    { id: 'space_astronomy', title: 'Space & Astronomy', description: 'Journey through the cosmos, from planets and stars to galaxies and black holes.' },
+    { id: 'biology', title: 'Chemistry', description: 'Delve into the world of atoms, molecules, reactions, and the periodic table.' },
+    { id: 'science_inventions', title: 'Physics', description: 'Challenge your understanding of motion, energy, forces, and the fundamental laws of the universe.' },
+    { id: 'world_knowledge', title: 'World Knowledge', description: 'Test your general knowledge about global geography, cultures, and current events.' },
+    { id: 'history_geography', title: 'History', description: 'Travel back in time and test your knowledge of major historical events, figures, and civilizations.' },
+    { id: 'science_inventions', title: 'Science Inventions', description: 'Learn about the groundbreaking inventions and discoveries that shaped our world.' },
+    { id: 'biology', title: 'Biology', description: 'Explore the mysteries of life, from cellular structures to complex ecosystems.' },
+    { id: 'space_astronomy', title: 'Time Challenge', description: 'A fast-paced quiz with random questions from all topics. How high can you score?', isChallenge: true },
 ];
-
 
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
@@ -145,19 +145,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- PROGRESS & STORAGE ---
-    function getStorageKey() { return state.isGuest ? null : `aiQuizProgress_${state.session.user.id}`; }
+    function getStorageKey() { return state.isGuest ? 'guest_progress' : `aiQuizProgress_${state.session.user.id}`; }
 
     async function saveProgress() {
-        if (state.isGuest) return;
-        // Save to Supabase as primary source of truth
-        await SupabaseClient.saveUserProgress(state.session.user.id, state.userProgress);
-        // Also save to localStorage for offline access
-        localStorage.setItem(getStorageKey(), JSON.stringify(state.userProgress));
+        const storageKey = getStorageKey();
+        if (!storageKey) return;
+        
+        console.log(`Saving progress for ${state.isGuest ? 'guest' : 'user'}...`);
+        localStorage.setItem(storageKey, JSON.stringify(state.userProgress));
+
+        if (!state.isGuest) {
+            await SupabaseClient.saveUserProgress(state.session.user.id, state.userProgress);
+        }
     }
 
     async function loadProgress() {
         if (state.isGuest) {
-            state.userProgress = { totalHints: 30, topics: {} };
+            const saved = localStorage.getItem(getStorageKey());
+            if (saved) {
+                try {
+                    state.userProgress = JSON.parse(saved);
+                    console.log('Guest progress loaded from localStorage.');
+                } catch (e) {
+                    console.error("Could not parse local guest progress", e);
+                    state.userProgress = { totalHints: 0, topics: {} };
+                }
+            } else {
+                 state.userProgress = { totalHints: 0, topics: {} }; // Guests don't get hints
+            }
+             // Ensure progress object has the right structure
+            if (typeof state.userProgress.totalHints !== 'number') {
+                state.userProgress.totalHints = 0;
+            }
+            if (typeof state.userProgress.topics !== 'object') {
+                state.userProgress.topics = {};
+            }
             return;
         }
 
@@ -169,7 +191,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!progress) {
             const saved = localStorage.getItem(getStorageKey());
             if (saved) {
-                try { progress = JSON.parse(saved); } catch (e) { console.error("Could not parse local progress", e); }
+                try { 
+                    progress = JSON.parse(saved);
+                    console.log('User progress loaded from localStorage fallback.');
+                } catch (e) { console.error("Could not parse local progress", e); }
             }
         }
 
@@ -183,6 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const p = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, history: [] };
         if (completedLevel === p.highestLevelUnlocked && completedLevel < TOTAL_LEVELS) {
             p.highestLevelUnlocked++;
+            console.log(`Level ${p.highestLevelUnlocked} unlocked for topic ${topicTitle}.`);
         }
         state.userProgress.topics[topicTitle] = p;
         await saveProgress();
@@ -193,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
         p.history = p.history || [];
         p.history.push({ level, score, date: new Date().toISOString(), questions: questions.map(q => ({q: q.q, answer: q.answer})) });
         state.userProgress.topics[topicTitle] = p;
+        console.log(`Result recorded for ${topicTitle} Level ${level}: Score ${score}`);
         await saveProgress();
     }
 
@@ -229,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- RENDERING & UI ---
     function renderHomeScreen() {
+        console.log("Rendering home screen...");
         const topicGrid = document.getElementById('topic-grid');
         topicGrid.innerHTML = '';
 
@@ -260,13 +288,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleTopicSelection(topic) {
         playSound('click');
         state.currentTopic = topic;
-        state.gameMode = 'topic';
-        navigateTo(Screen.LEVEL);
+
+        if (topic.isChallenge) {
+            console.log("Time Challenge selected.");
+            state.gameMode = 'timeChallenge';
+            navigateTo(Screen.QUIZ);
+        } else {
+            console.log(`Topic selected: ${topic.title}`);
+            state.gameMode = 'topic';
+            navigateTo(Screen.LEVEL);
+        }
     }
 
     function renderLevelScreen() {
         if (!state.currentTopic) { navigateTo(Screen.HOME); return; }
         
+        console.log(`Rendering level screen for ${state.currentTopic.title}`);
         const { title } = state.currentTopic;
         const progress = state.userProgress.topics[title] || { highestLevelUnlocked: 1, history: [] };
         const levelGrid = document.getElementById('level-grid');
@@ -316,6 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderResultsScreen({ score, timedOut }) {
+        console.log("Rendering results screen.");
         document.getElementById('final-score-value').textContent = score;
         document.getElementById('correct-answers').textContent = score;
         document.getElementById('incorrect-answers').textContent = 10 - score;
@@ -378,6 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
             quizControllerModule.cleanupQuiz();
         }
 
+        console.log(`Navigating to screen: ${screenId}`);
         state.currentScreen = screenId;
         dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
         
@@ -446,7 +485,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { data: updatedUser, error: updateError } = await SupabaseClient.updateProfileAndUser(state.session.user.id, { username: newUsername, profile_picture_url: pfpUrl });
                 if (updateError) throw updateError;
                 
-                // Manually merge updates into local session state to avoid full reload
                 state.session.user = { ...state.session.user, ...updatedUser.user_metadata, profile_picture_url: pfpUrl, username: newUsername };
 
                 showToast('Profile updated successfully!');
@@ -475,11 +513,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showLoading(true, "Changing password...");
             try {
-                // Re-authenticate to verify old password
                 const { error: reauthError } = await SupabaseClient.signIn(state.session.user.email, oldPassword);
                 if (reauthError) throw new Error("Incorrect old password.");
                 
-                // If re-auth is successful, update to the new password
                 const { error: updateError } = await SupabaseClient.updateUserPassword(newPassword);
                 if (updateError) throw updateError;
                 
@@ -495,6 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INITIALIZATION ---
     async function init() {
+        console.log("Initializing dashboard...");
         document.body.addEventListener('click', () => { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }, { once: true });
         
         const toggle3dBtn = document.querySelector('.theme-toggle-btn[aria-label*="3D"]');
@@ -511,15 +548,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         state.session = await window.auth.getSession();
-        if (!state.session) { return; }
+        if (!state.session) { 
+            console.error("Initialization failed: No session found.");
+            return;
+        }
 
         state.isGuest = state.session.user?.guest === true;
         if (state.isGuest) {
+            console.log("Running in Guest Mode.");
             dom.guestBanner.classList.remove('hidden');
+            dom.guestBanner.innerHTML = `<p>You are in Guest Mode — progress is saved locally. <a href="/signup.html">Sign up</a> to save to the cloud!</p>`;
             updateProfilePictureUI(null, 'Guest');
             dom.appHeader.style.top = '48px'; 
             dom.mainContent.style.paddingTop = '128px';
         } else {
+            console.log(`User ${state.session.user.email} is logged in.`);
             // Check if a profile exists for the user. If not, this is their first login.
             const { data: profile } = await SupabaseClient.supabase
                 .from('profiles')
@@ -540,14 +583,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Error creating profile on first login:', insertError);
                     showToast(`Could not create your profile: ${insertError.message}`, true);
                 } else {
-                    // Force a refresh of the session to get the new profile data merged in
                     state.session = await window.auth.getSession(true);
                 }
             }
     
-            await loadProgress();
             updateProfilePictureUI(state.session.user.profile_picture_url, state.session.user.username);
         }
+        await loadProgress();
         
         setupProfileEventHandlers();
         
@@ -574,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
             switch(btn.id) {
                 case 'next-level-btn': playSound('click'); state.currentLevel++; navigateTo(Screen.QUIZ); break;
                 case 'retry-btn': playSound('click'); navigateTo(Screen.QUIZ); break;
-                case 'retry-challenge-btn': playSound('click'); state.gameMode = 'timeChallenge'; navigateTo(Screen.QUIZ); break;
+                case 'retry-challenge-btn': playSound('click'); handleTopicSelection({ isChallenge: true }); break;
                 case 'topics-btn': case 'back-to-topics-btn': case 'back-to-dashboard-btn': playSound('click'); navigateTo(Screen.HOME); break;
                 case 'start-current-level-btn':
                     playSound('click');

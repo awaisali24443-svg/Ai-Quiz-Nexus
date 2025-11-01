@@ -23,8 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw error;
                 }
                 
-                // Manually redirect on success for robustness.
-                window.location.assign('/dashboard.html');
+                // Redirection is now handled by the onAuthStateChange listener in auth.js
+                // This prevents race conditions and login loops.
+                console.log('Login successful, waiting for auth state change to redirect.');
 
             } catch (error) {
                 errorContainer.textContent = error.message || 'Login failed. Please check your credentials.';
@@ -39,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         guestBtn.addEventListener('click', () => {
             const session = window.auth.saveGuestSession();
             if (session) {
-                window.location.assign('/dashboard.html');
+                window.location.replace('/dashboard.html');
             } else {
                 errorContainer.textContent = 'Guest mode is unavailable. Please enable site data/cookies in your browser settings.';
                 errorContainer.classList.remove('hidden');

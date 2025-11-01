@@ -102,7 +102,7 @@ app.post('/api/generate-time-challenge', async (req, res) => {
     }
 
     const questionsPerQuiz = 10;
-    const TOPICS = [ 'Programming', 'World Knowledge', 'Biology', 'Space', 'Technology & AI', 'History', 'Mathematics', 'Science', 'Islamic Knowledge' ];
+    const TOPICS = [ 'Programming Languages', 'AI & Technology', 'Space & Astronomy', 'Chemistry', 'Physics', 'World Knowledge', 'History', 'Science Inventions', 'Biology' ];
     const shuffledTopics = TOPICS.sort(() => 0.5 - Math.random());
     const selectedTopics = shuffledTopics.slice(0, 5).join(', ');
 

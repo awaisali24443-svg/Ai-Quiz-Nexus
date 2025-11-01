@@ -1,30 +1,39 @@
 // This file was created to centralize Supabase client initialization and functions.
 
-// ===================================================================================
-// IMPORTANT: CONFIGURATION REQUIRED
-// You must replace the placeholder values below with your actual Supabase project URL and Anon Key.
-// You can find these in your Supabase project's API settings.
-// The app will not work until you do this.
 const SUPABASE_URL = "https://lsceubrqjpcbclbmenow.supabase.co"; 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY2V1YnJxanBjYmNsYm1lbm93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5MjE0MjQsImV4cCI6MjA3NzQ5NzQyNH0.wHjFxskw3DYbat67Vw-6GlIfzksLjoOwPQH0JkhrWo8";
-// ===================================================================================
 
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL === "YOUR_SUPABASE_URL" || SUPABASE_ANON_KEY === "YOUR_SUPABASE_ANON_KEY") {
-    const errorHtml = `
-        <body style="background-color: #0a0a1f; color: #f8fafc; font-family: sans-serif; margin: 0;">
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 2rem;">
-                <h1 style="color: #ff4d4d; border-bottom: 2px solid #ff4d4d; padding-bottom: 0.5rem; margin-bottom: 1rem;">Configuration Error</h1>
-                <p style="font-size: 1.2rem; max-width: 600px; text-align: center;">The application is not configured correctly.</p>
-                <p style="max-width: 600px; text-align: center; color: #94a3b8;">Please edit the file <code style="background-color: #333; padding: 0.2rem 0.5rem; border-radius: 4px;">js/supabase-client.js</code> and replace the placeholder values for <code style="background-color: #333; padding: 0.2rem 0.5rem; border-radius: 4px;">SUPABASE_URL</code> and <code style="background-color: #333; padding: 0.2rem 0.5rem; border-radius: 4px;">SUPABASE_ANON_KEY</code> with your project's credentials.</p>
-            </div>
-        </body>
-    `;
+// Initial check for placeholder values
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes("YOUR_SUPABASE_URL") || SUPABASE_ANON_KEY.includes("YOUR_SUPABASE_ANON_KEY")) {
+    const errorHtml = `<body style="background-color: #0a0a1f; color: #f8fafc; font-family: sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center;"><p>Supabase URL/Key not configured in js/supabase-client.js</p></body>`;
     document.documentElement.innerHTML = errorHtml;
     throw new Error("Supabase URL and/or Anon Key are not configured in js/supabase-client.js. App halted.");
 }
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// --- Supabase Connection Verification ---
+async function verifySupabaseConnection() {
+  try {
+    // Attempt to query a non-existent table with a limit of 0. This is a lightweight check.
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    // Note: A "relation does not exist" error can still mean the connection is fine if the table isn't created yet.
+    // We are mainly checking for authentication or network errors.
+    if (error && error.message.includes('fetch failed')) {
+        throw new Error(`Network error: ${error.message}`);
+    }
+    if (error && (error.message.includes('Invalid API key') || error.message.includes('Unauthorized'))) {
+        throw new Error(`Authentication error: ${error.message}`);
+    }
+    console.log('✅ Supabase Verified: Connection established.');
+    localStorage.removeItem('db_error'); // Clear any previous error state
+  } catch (err) {
+    console.log('⚠️ Supabase Connection Failed — please recheck credentials. Switching to local guest mode.', err.message);
+    localStorage.setItem('db_error', 'true');
+  }
+}
+verifySupabaseConnection();
+
 
 // --- Auth Functions ---
 const signUp = (email, password, username) => supabase.auth.signUp({
@@ -78,7 +87,7 @@ const uploadProfilePicture = async (userId, base64FileData) => {
         const blob = await res.blob();
         
         const { data, error } = await supabase.storage
-            .from('avatars') // IMPORTANT: Create a bucket named 'avatars' in your Supabase project.
+            .from('avatars')
             .upload(filePath, blob, {
                 cacheControl: '3600',
                 upsert: true,
