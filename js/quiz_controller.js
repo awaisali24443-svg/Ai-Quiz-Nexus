@@ -193,6 +193,7 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
         window.addEventListener('quizComplete', onQuizComplete);
 
         resetQuizState();
+        dom.quizProgressBar.style.width = '0%';
         dom.quizHintBtn.removeEventListener('click', handleHint); // Remove old listener before adding new one
         dom.quizHintBtn.addEventListener('click', handleHint);
         utils.showLoading(true, "Crafting your challenge...");
