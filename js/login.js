@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from './supabase-client.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,7 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw error;
                 }
                 
-                window.location.href = '/dashboard.html';
+                // Instead of a direct redirect, reload the page.
+                // auth.js will then detect the session and redirect to the dashboard.
+                // This is a more robust way to handle the state change.
+                window.location.reload();
 
             } catch (error) {
                 errorContainer.textContent = error.message || 'Login failed. Please check your credentials.';
