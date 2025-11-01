@@ -513,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.session = await window.auth.getSession();
         if (!state.session) { return; }
 
-        state.isGuest = state.session.user === 'guest';
+        state.isGuest = state.session.user?.guest === true;
         if (state.isGuest) {
             dom.guestBanner.classList.remove('hidden');
             updateProfilePictureUI(null, 'Guest');

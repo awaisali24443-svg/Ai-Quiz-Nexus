@@ -23,8 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw error;
                 }
                 
-                // On successful login, the onAuthStateChange listener in auth.js will handle the redirect.
-                // No manual redirect is needed here, to prevent a race condition.
+                // Manually redirect on success for robustness.
+                window.location.assign('/dashboard.html');
 
             } catch (error) {
                 errorContainer.textContent = error.message || 'Login failed. Please check your credentials.';
