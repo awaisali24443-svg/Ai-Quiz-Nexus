@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from './supabase-client.js';
 
 // This module is dynamically imported by dashboard.js only when a quiz starts.
@@ -18,7 +19,8 @@ function resetQuizState() {
         score: 0,
         answerSubmitted: false,
         hintUsedThisQuestion: false,
-        timedOut: false
+        timedOut: false,
+        isComplete: false, // Flag to prevent double completion events
     };
 }
 
@@ -39,8 +41,10 @@ function startTimer(duration, onTimeout) {
         dom.quizTimer.classList.toggle('low-time', timer <= 30);
 
         if (--timer < 0) {
+            if (quizState.isComplete) return; // Prevent firing if already completed
             utils.playSound('incorrect');
             quizState.timedOut = true;
+            quizState.isComplete = true;
             stopTimer();
             onTimeout(quizState);
         }
@@ -124,6 +128,8 @@ function handleNextQuestion() {
         quizState.hintUsedThisQuestion = false;
         renderQuizQuestion();
     } else {
+        if (quizState.isComplete) return; // Prevent double completion
+        quizState.isComplete = true;
         stopTimer();
         window.dispatchEvent(new CustomEvent('quizComplete', { detail: quizState }));
     }

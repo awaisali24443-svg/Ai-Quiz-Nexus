@@ -81,7 +81,6 @@ function destroy3DScene() {
     cancelAnimationFrame(animationFrameId);
     if (renderer) {
         renderer.dispose();
-        // Recursively dispose of objects in the scene
         scene.traverse(object => {
             if (object.geometry) {
                 object.geometry.dispose();
