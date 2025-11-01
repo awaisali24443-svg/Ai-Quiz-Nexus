@@ -35,8 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (guestBtn) {
         guestBtn.addEventListener('click', () => {
-            window.auth.saveGuestSession();
-            window.location.href = '/dashboard.html';
+            const session = window.auth.saveGuestSession();
+            if (session) {
+                window.location.href = '/dashboard.html';
+            } else {
+                errorContainer.textContent = 'Guest mode is unavailable. Please enable site data/cookies in your browser settings.';
+                errorContainer.classList.remove('hidden');
+            }
         });
     }
 });

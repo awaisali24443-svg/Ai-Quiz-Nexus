@@ -65,7 +65,12 @@
                     </div>
                     <button type="submit" class="btn btn-primary btn-full">Create Account</button>
                 </form>
-                <p class="auth-switch-text">Already have an account? <a href="/login.html">Login</a></p>
+                <div id="signup-success" class="auth-success hidden">
+                    <h2 class="auth-title">Check your inbox!</h2>
+                    <p>We've sent a confirmation link to your email address. Please click the link to complete your registration.</p>
+                    <a href="/login.html" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Back to Login</a>
+                </div>
+                <p id="auth-switch-p" class="auth-switch-text">Already have an account? <a href="/login.html">Login</a></p>
             </div>
         </div>
     </main>

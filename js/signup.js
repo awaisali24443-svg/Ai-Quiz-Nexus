@@ -52,13 +52,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error("Registration completed, but profile setup failed. Please contact support.");
                 }
 
-                // Automatically log the user in and redirect
-                window.location.href = '/dashboard.html';
+                // Instead of redirecting, show a success message to check email
+                loadingOverlay.classList.add('hidden');
+                document.getElementById('signup-form').classList.add('hidden');
+                document.getElementById('signup-error').classList.add('hidden');
+                document.getElementById('auth-switch-p').classList.add('hidden');
+                document.getElementById('signup-success').classList.remove('hidden');
 
             } catch (error) {
                 errorContainer.textContent = error.message || 'Registration failed.';
                 errorContainer.classList.remove('hidden');
-            } finally {
                 loadingOverlay.classList.add('hidden');
             }
         });
