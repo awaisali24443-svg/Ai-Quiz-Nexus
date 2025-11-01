@@ -212,10 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }, { threshold: 0.1 });
 
-        TOPICS.forEach(topic => {
+        TOPICS.forEach((topic, index) => {
             const card = document.createElement('div');
             card.className = 'topic-card';
             card.dataset.topicId = topic.id;
+            card.style.transitionDelay = `${index * 50}ms`;
             card.innerHTML = `
                 <div class="topic-card-content">
                     <h3>${topic.title}</h3>

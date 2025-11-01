@@ -224,12 +224,22 @@ main {
     border-radius: 12px;
     padding: 1.5rem;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.4s ease-out;
     backdrop-filter: blur(10px);
     position: relative;
     overflow: hidden;
+    opacity: 0;
+    transform: translateY(20px);
 }
-.topic-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 0 20px rgba(0, 234, 255, 0.3); }
+.topic-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.topic-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary);
+    box-shadow: 0 0 20px rgba(0, 234, 255, 0.3);
+}
 .topic-card .icon { color: var(--primary); margin-bottom: 1rem; font-size: 1.5rem; }
 .topic-card h3 { font-family: var(--font-title); font-size: 1.25rem; margin-bottom: 0.5rem; }
 .topic-card p { font-size: 0.9rem; color: var(--text-medium); }

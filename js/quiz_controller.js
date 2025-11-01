@@ -76,6 +76,17 @@ function renderQuizQuestion() {
 
     const quizBody = document.querySelector('.quiz-body');
     gsap.fromTo(quizBody, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
+    gsap.fromTo('.option-btn', 
+        { opacity: 0, x: -20 }, 
+        { 
+            opacity: 1, 
+            x: 0, 
+            duration: 0.4, 
+            stagger: 0.08, 
+            ease: 'power2.out', 
+            delay: 0.2 
+        }
+    );
 }
 
 function handleAnswerSelection(selectedButton) {
