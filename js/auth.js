@@ -31,66 +31,63 @@ function getGuestSession() {
     }
 }
 
-// A singleton promise to ensure the session is checked only once per page load.
+// A singleton promise to get the session data, which other parts of the app can use.
 let sessionPromise = null;
 function getSession(forceRefresh = false) {
     if (sessionPromise && !forceRefresh) {
         return sessionPromise;
     }
+    sessionPromise = (async () => {
+        const { data: { session: authSession } } = await SupabaseClient.supabase.auth.getSession();
 
-    sessionPromise = new Promise((resolve) => {
-        // onAuthStateChange fires immediately with the current session.
-        // We use a one-time subscription to get the initial auth state.
-        const { data: { subscription } } = SupabaseClient.supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (subscription) subscription.unsubscribe(); 
-            
-            if (session) {
-                // If there's a real Supabase session, fetch the user's profile
-                const { data: profile } = await SupabaseClient.getProfile(session.user);
-                const fullSession = {
-                    ...session,
-                    user: { 
-                        ...session.user, 
-                        // Merge profile data (username, pfp) with auth user data
-                        username: profile?.username || session.user.email,
-                        profile_picture_url: profile?.profile_picture_url
-                    }
-                };
-                resolve(fullSession);
-            } else {
-                // If no Supabase session, fall back to checking for a guest session
-                resolve(getGuestSession());
-            }
-        });
-    });
+        if (authSession) {
+            const { data: profile } = await SupabaseClient.getProfile(authSession.user);
+            const fullSession = {
+                ...authSession,
+                user: {
+                    ...authSession.user,
+                    username: profile?.username || authSession.user.email,
+                    profile_picture_url: profile?.profile_picture_url
+                }
+            };
+            return fullSession;
+        }
+        return getGuestSession();
+    })();
     return sessionPromise;
 }
 
 async function logout() {
     await SupabaseClient.signOut();
     localStorage.removeItem(GUEST_SESSION_KEY);
-    window.location.replace('/');
+    // The onAuthStateChange listener will handle the redirect.
 }
 
-async function checkAuth() {
-    // getSession() will now wait until the auth state is confirmed.
-    const session = await getSession();
+// Centralized auth state change handler. This listener is the single source of truth for auth-based redirects.
+// It's called once on script load and again whenever the auth state changes.
+SupabaseClient.supabase.auth.onAuthStateChange((_event, session) => {
     const currentPath = window.location.pathname;
+    
+    // Invalidate the session promise cache on any auth change
+    sessionPromise = null;
 
-    if (session) {
-        // User is logged in (or is a guest)
+    const isUserLoggedIn = !!session;
+    const isGuest = !!getGuestSession();
+    const isLoggedIn = isUserLoggedIn || isGuest;
+
+    if (isLoggedIn) {
+        // If the user is on a public page (like login), redirect them to the dashboard.
         if (publicPaths.includes(currentPath)) {
-            // If on a public page (like login), redirect to dashboard
             window.location.replace('/dashboard.html');
         }
-    } else {
-        // User is not logged in
+    } else { // Not logged in as a user or guest
+        // If the user is on a protected page, redirect them to the home page.
         if (protectedPaths.includes(currentPath)) {
-            // If on a protected page, redirect to home/login
             window.location.replace('/');
         }
     }
-}
+});
+
 
 window.auth = {
     getSession,
@@ -98,5 +95,5 @@ window.auth = {
     saveGuestSession
 };
 
-// Run the authentication check when the script loads.
-checkAuth();
+// No explicit checkAuth() call is needed anymore.
+// The onAuthStateChange listener is called on initialization and handles all routing cases.
