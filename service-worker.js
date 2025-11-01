@@ -1,19 +1,14 @@
 
+
 const CACHE_NAME = 'knowledge-tester-v2';
 // This list now includes all the core files needed for the app to run offline.
 const APP_SHELL_URLS = [
     '/',
     '/index.html',
-    '/login.html',
-    '/signup.html',
     '/dashboard.html',
     '/css/style.css',
-    '/js/auth.js',
-    '/js/login.js',
-    '/js/signup.js',
     '/js/main.js',
     '/js/dashboard.js',
-    '/js/supabase-client.js', // New Supabase client
     '/js/quiz_controller.js', // The new dynamically loaded module
     '/js/questions.js',
     '/js/3d/sceneManager.js',

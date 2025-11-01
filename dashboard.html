@@ -33,29 +33,11 @@
                     <h1>Knowledge Tester</h1>
                 </div>
                 <div id="header-nav-container">
-                     <nav class="header-nav-links">
-                        <a href="#" class="nav-link" id="profile-nav-link">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            <span>Profile</span>
-                        </a>
-                        <a href="#" class="nav-link" id="settings-nav-link">
-                           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                            <span>Settings</span>
-                        </a>
-                     </nav>
-                     <div id="user-controls">
-                        <div id="profile-button" class="profile-button" role="button" aria-label="Open profile settings" tabindex="0">
-                            <div id="profile-avatar-default" class="profile-avatar-default"></div>
-                            <img id="profile-picture-img" src="" alt="Profile Picture" class="hidden">
-                        </div>
-                    </div>
+                     <button id="reset-progress-btn" class="btn btn-secondary">Reset Progress</button>
                 </div>
             </div>
         </header>
 
-        <div id="guest-banner" class="hidden">
-            <p>You are in Guest Mode — progress won’t be saved. <a href="/signup.html">Sign up</a> to save your progress!</p>
-        </div>
         <div id="offline-banner" class="hidden">
             <p>Offline mode activated – data will be saved locally.</p>
         </div>
@@ -96,58 +78,6 @@
                 <div class="container text-center"><h2 class="screen-title">Level Complete!</h2><p id="results-topic-text" class="screen-subtitle"></p><div class="final-score"><span id="final-score-value">0</span>/<span id="total-questions-value">10</span></div><div class="score-details"><div><p id="correct-answers" class="correct"></p><span>CORRECT</span></div><div><p id="incorrect-answers" class="incorrect"></p><span>INCORRECT</span></div></div><p id="unlock-message" class="unlock-message hidden"></p><div id="results-action-buttons" class="action-buttons"></div></div>
             </section>
 
-            <section id="profile-screen" class="screen hidden">
-                <div class="container">
-                    <div class="profile-container">
-                        <h2 class="screen-title text-center">Profile Settings</h2>
-                        <div class="profile-card">
-                            <form id="profile-form">
-                                <div class="pfp-upload-section">
-                                    <div class="pfp-container">
-                                        <img id="profile-preview-img" src="" alt="Profile Preview">
-                                        <div id="profile-preview-default" class="profile-avatar-default large"></div>
-                                    </div>
-                                    <input type="file" id="pfp-upload-input" accept="image/png, image/jpeg" class="hidden">
-                                    <button type="button" id="pfp-upload-btn" class="btn btn-secondary">Upload Picture</button>
-                                    <p class="pfp-note">Max 2MB. PNG or JPG.</p>
-                                </div>
-                                <div class="form-group">
-                                    <label for="profile-username">Username</label>
-                                    <input type="text" id="profile-username" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="profile-email">Email</label>
-                                    <input type="email" id="profile-email" disabled>
-                                    <p class="form-note">Email address cannot be changed.</p>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Save Profile</button>
-                            </form>
-                        </div>
-                        <div class="profile-card">
-                            <h3>Change Password</h3>
-                            <form id="password-form">
-                                <div class="form-group">
-                                    <label for="old-password">Old Password</label>
-                                    <input type="password" id="old-password" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="new-password">New Password</label>
-                                    <input type="password" id="new-password" required minlength="8" pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$">
-                                </div>
-                                <div class="form-group">
-                                    <label for="confirm-new-password">Confirm New Password</label>
-                                    <input type="password" id="confirm-new-password" required>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Change Password</button>
-                            </form>
-                        </div>
-                        <div class="action-buttons">
-                             <button id="logout-btn" class="btn btn-secondary">Logout</button>
-                            <button id="back-to-dashboard-btn" class="btn btn-secondary">&larr; Back to Dashboard</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </main>
         
         <footer id="app-footer" class="cyber-footer">
@@ -159,22 +89,12 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                     <span>Home</span>
                 </button>
-                 <button class="nav-item" data-screen="profile-screen">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    <span>Profile</span>
-                </button>
-                 <button class="nav-item" data-screen="profile-screen">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    <span>Settings</span>
-                </button>
             </nav>
         </footer>
         <div id="loading-overlay" class="hidden"><div class="spinner"></div><p id="loading-text">Loading...</p></div>
         <div id="toast-container"></div>
     </div>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="js/main.js" defer></script>
-    <script type="module" src="js/auth.js"></script>
     <script src="js/questions.js"></script>
     <script type="module" src="js/dashboard.js"></script>
 </body>

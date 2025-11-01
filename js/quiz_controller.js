@@ -1,5 +1,4 @@
 
-import { SupabaseClient } from './supabase-client.js';
 
 // This module is dynamically imported by dashboard.js only when a quiz starts.
 
@@ -18,7 +17,6 @@ function resetQuizState() {
         currentQuestionIndex: 0,
         score: 0,
         answerSubmitted: false,
-        hintUsedThisQuestion: false,
         timedOut: false,
         isComplete: false, // Flag to prevent double completion events
     };
@@ -69,14 +67,7 @@ function renderQuizQuestion() {
         dom.optionsContainer.appendChild(btn);
     });
 
-    if (appState.isGuest) {
-        dom.quizHintBtn.classList.add('hidden');
-    } else {
-        dom.quizHintBtn.classList.remove('hidden');
-        dom.quizHintsLeft.textContent = appState.userProgress.totalHints;
-        dom.quizHintBtn.disabled = appState.userProgress.totalHints <= 0 || quizState.hintUsedThisQuestion;
-    }
-
+    dom.quizHintBtn.classList.add('hidden'); // Hints are disabled in local mode
 
     const quizBody = document.querySelector('.quiz-body');
     gsap.fromTo(quizBody, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
@@ -104,7 +95,7 @@ function handleAnswerSelection(selectedButton) {
     utils.playSound(isCorrect ? 'correct' : 'incorrect');
     
     if (isCorrect) {
-        quizState.score += quizState.hintUsedThisQuestion ? 0.5 : 1;
+        quizState.score++;
     }
 
     document.querySelectorAll('.option-btn').forEach(btn => {
@@ -125,7 +116,6 @@ function handleNextQuestion() {
     if (quizState.currentQuestionIndex < quizState.questions.length - 1) {
         quizState.currentQuestionIndex++;
         quizState.answerSubmitted = false;
-        quizState.hintUsedThisQuestion = false;
         renderQuizQuestion();
     } else {
         if (quizState.isComplete) return; // Prevent double completion
@@ -135,38 +125,8 @@ function handleNextQuestion() {
     }
 }
 
-function handleHint() {
-    if (appState.isGuest || appState.userProgress.totalHints <= 0 || quizState.hintUsedThisQuestion) return;
-    
-    utils.playSound('click');
-    appState.userProgress.totalHints--;
-    
-    // This change will be saved to Supabase in dashboard.js after the quiz
-    dom.quizHintsLeft.textContent = appState.userProgress.totalHints;
-    dom.quizHintBtn.disabled = true;
-    quizState.hintUsedThisQuestion = true;
-
-
-    const question = quizState.questions[quizState.currentQuestionIndex];
-    const incorrectOptions = Array.from(document.querySelectorAll('.option-btn')).filter(btn => btn.textContent !== question.answer);
-    
-    if (incorrectOptions.length > 1) {
-        const optionToDisable = incorrectOptions[Math.floor(Math.random() * incorrectOptions.length)];
-        optionToDisable.classList.add('hint-disabled');
-    }
-}
-
 async function getQuizQuestions(prefetchPromise, answeredQuestions) {
-    // 1. Try to load from Supabase first (for non-guest users in topic mode)
-    if (!appState.isGuest && appState.gameMode === 'topic') {
-        const dbQuestions = await SupabaseClient.loadQuestions(appState.currentTopic.id, appState.currentLevel);
-        if (dbQuestions && dbQuestions.length >= QUESTIONS_PER_QUIZ) {
-            utils.showToast("📚 Questions loaded from database.");
-            return dbQuestions;
-        }
-    }
-
-    // 2. Fallback to AI generation (if online)
+    // 1. Try to use prefetched AI quiz data first
     if (prefetchPromise) {
         utils.showToast("⚡ Prefetched AI quiz loaded!");
         const data = await prefetchPromise;
@@ -174,6 +134,7 @@ async function getQuizQuestions(prefetchPromise, answeredQuestions) {
         return data.questions;
     }
 
+    // 2. Fallback to live AI generation (if online)
     if (navigator.onLine) {
          try {
             const endpoint = appState.gameMode === 'topic' ? '/api/generate-quiz' : '/api/generate-time-challenge';
@@ -225,8 +186,6 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
 
         resetQuizState();
         dom.quizProgressBar.style.width = '0%';
-        dom.quizHintBtn.removeEventListener('click', handleHint); // Remove old listener before adding new one
-        dom.quizHintBtn.addEventListener('click', handleHint);
         utils.showLoading(true, "Crafting your challenge...");
 
         try {
