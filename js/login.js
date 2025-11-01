@@ -1,3 +1,4 @@
+import { SupabaseClient } from './supabase-client.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
@@ -15,23 +16,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = document.getElementById('login-password').value;
 
             try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password }),
-                });
+                const { error } = await SupabaseClient.signIn(email, password);
 
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.message || 'Login failed.');
+                if (error) {
+                    throw error;
                 }
                 
-                window.auth.saveSession(data);
                 window.location.href = '/dashboard.html';
 
             } catch (error) {
-                errorContainer.textContent = error.message;
+                errorContainer.textContent = error.message || 'Login failed. Please check your credentials.';
                 errorContainer.classList.remove('hidden');
             } finally {
                 loadingOverlay.classList.add('hidden');
@@ -41,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (guestBtn) {
         guestBtn.addEventListener('click', () => {
-            window.auth.saveSession('guest');
+            window.auth.saveGuestSession();
             window.location.href = '/dashboard.html';
         });
     }

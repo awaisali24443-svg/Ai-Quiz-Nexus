@@ -1,3 +1,4 @@
+import { SupabaseClient } from './supabase-client.js';
 
 // This module is dynamically imported by dashboard.js only when a quiz starts.
 
@@ -122,11 +123,12 @@ function handleHint() {
     
     utils.playSound('click');
     appState.userProgress.totalHints--;
-    quizState.hintUsedThisQuestion = true;
     
-    document.getElementById('hint-counter-display').querySelector('span').textContent = appState.userProgress.totalHints;
+    // This change will be saved to Supabase in dashboard.js after the quiz
     dom.quizHintsLeft.textContent = appState.userProgress.totalHints;
     dom.quizHintBtn.disabled = true;
+    quizState.hintUsedThisQuestion = true;
+
 
     const question = quizState.questions[quizState.currentQuestionIndex];
     const incorrectOptions = Array.from(document.querySelectorAll('.option-btn')).filter(btn => btn.textContent !== question.answer);
@@ -137,39 +139,51 @@ function handleHint() {
     }
 }
 
-async function fetchQuizQuestions(prefetchPromise, answeredQuestions) {
+async function getQuizQuestions(prefetchPromise, answeredQuestions) {
+    // 1. Try to load from Supabase first (for non-guest users in topic mode)
+    if (!appState.isGuest && appState.gameMode === 'topic') {
+        const dbQuestions = await SupabaseClient.loadQuestions(appState.currentTopic.dbId, appState.currentLevel);
+        if (dbQuestions && dbQuestions.length >= QUESTIONS_PER_QUIZ) {
+            utils.showToast("📚 Questions loaded from database.");
+            return dbQuestions;
+        }
+    }
+
+    // 2. Fallback to AI generation (if online)
     if (prefetchPromise) {
-        utils.showToast("⚡ Prefetched quiz loaded!");
+        utils.showToast("⚡ Prefetched AI quiz loaded!");
         const data = await prefetchPromise;
         if (!data.questions || data.questions.length === 0) throw new Error("Prefetched data was invalid.");
         return data.questions;
     }
 
-    if (!navigator.onLine) {
-        if (appState.gameMode === 'timeChallenge') throw new Error('Time Challenge requires an internet connection.');
-        utils.showToast('⚠️ AI is unavailable. Using offline questions.', true);
-        return utils.getFallbackQuestions(appState.currentTopic.title, appState.currentLevel);
+    if (navigator.onLine) {
+         try {
+            const endpoint = appState.gameMode === 'topic' ? '/api/generate-quiz' : '/api/generate-time-challenge';
+            const body = appState.gameMode === 'topic' 
+                ? { topic: appState.currentTopic.title, level: appState.currentLevel, answeredQuestions } 
+                : {};
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) { const err = await response.json(); throw new Error(err.message); }
+            const data = await response.json();
+            if (!data.questions || data.questions.length === 0) throw new Error("AI returned no questions.");
+            return data.questions;
+        } catch (error) {
+            utils.showToast(`AI generation failed: ${error.message}. Using offline questions.`, true);
+            // Fall through to offline questions
+        }
     }
     
-    try {
-        const endpoint = appState.gameMode === 'topic' ? '/api/generate-quiz' : '/api/generate-time-challenge';
-        const body = appState.gameMode === 'topic' 
-            ? { topic: appState.currentTopic.title, level: appState.currentLevel, answeredQuestions } 
-            : {};
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        if (!response.ok) { const err = await response.json(); throw new Error(err.message); }
-        const data = await response.json();
-        if (!data.questions || data.questions.length === 0) throw new Error("AI returned no questions.");
-        return data.questions;
-    } catch (error) {
-        utils.showToast(`AI generation failed: ${error.message}. Using offline questions.`, true);
-        if (appState.gameMode === 'timeChallenge') throw new Error('Time Challenge requires the AI service.');
-        return utils.getFallbackQuestions(appState.currentTopic.title, appState.currentLevel);
+    // 3. Fallback to local questions (if offline or AI fails)
+    if (appState.gameMode === 'timeChallenge') {
+        throw new Error('Time Challenge requires an internet connection.');
     }
+    utils.showToast('⚠️ Using offline fallback questions.', true);
+    return utils.getFallbackQuestions(appState.currentTopic.title, appState.currentLevel);
 }
 
 export function cleanupQuiz() {
@@ -199,7 +213,7 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
         utils.showLoading(true, "Crafting your challenge...");
 
         try {
-            const questions = await fetchQuizQuestions(prefetchPromise, answeredQuestions);
+            const questions = await getQuizQuestions(prefetchPromise, answeredQuestions);
             quizState.questions = questions.sort(() => 0.5 - Math.random()).slice(0, QUESTIONS_PER_QUIZ);
             
             if (appState.gameMode === 'timeChallenge') {

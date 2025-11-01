@@ -1,57 +1,17 @@
+import { SupabaseClient } from './supabase-client.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const signupForm = document.getElementById('signup-form');
     const errorContainer = document.getElementById('signup-error');
     const loadingOverlay = document.getElementById('loading-overlay');
     const usernameInput = document.getElementById('signup-username');
-    const usernameFeedback = document.getElementById('username-feedback');
     
-    let debounceTimeout;
-
-    const checkUsername = async (username) => {
-        if (username.length < 3) {
-            usernameFeedback.textContent = '';
-            usernameFeedback.className = 'feedback-text';
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/check-username', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username }),
-            });
-            const data = await response.json();
-
-            if (data.isAvailable) {
-                usernameFeedback.textContent = 'Username available!';
-                usernameFeedback.className = 'feedback-text valid';
-            } else {
-                usernameFeedback.textContent = 'Username is already taken.';
-                usernameFeedback.className = 'feedback-text invalid';
-            }
-        } catch (error) {
-            usernameFeedback.textContent = 'Error checking username.';
-            usernameFeedback.className = 'feedback-text invalid';
-        }
-    };
-    
-    if (usernameInput) {
-        usernameInput.addEventListener('input', (e) => {
-            clearTimeout(debounceTimeout);
-            const username = e.target.value;
-            debounceTimeout = setTimeout(() => {
-                checkUsername(username);
-            }, 500); // 500ms delay
-        });
-    }
-
-
     if (signupForm) {
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             errorContainer.classList.add('hidden');
 
-            const username = document.getElementById('signup-username').value;
+            const username = usernameInput.value;
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
             const confirmPassword = document.getElementById('signup-confirm-password').value;
@@ -62,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
+            // Password strength is now handled by Supabase, but client-side check is good UX.
             const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
             if (!passwordRegex.test(password)) {
                 errorContainer.textContent = "Password must be at least 8 characters long and contain at least one letter and one number.";
@@ -72,23 +33,32 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingOverlay.classList.remove('hidden');
 
             try {
-                const response = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password }),
-                });
+                // 1. Sign up the user with Supabase Auth
+                const { data, error: signUpError } = await SupabaseClient.signUp(email, password);
 
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.message || 'Registration failed.');
+                if (signUpError) {
+                    throw signUpError;
                 }
 
-                window.auth.saveSession(data);
+                if (!data.user) {
+                     throw new Error('Registration failed. Please try again.');
+                }
+                
+                // 2. Create a profile for the new user in the 'profiles' table
+                const { error: profileError } = await SupabaseClient.createProfile(data.user, username);
+                
+                if (profileError) {
+                    // This is a tricky state. User is created but profile failed.
+                    // For a real app, you might want to handle this more gracefully.
+                    console.error("User created but profile creation failed:", profileError);
+                    throw new Error("Registration completed, but profile setup failed. Please contact support.");
+                }
+
+                // Automatically log the user in and redirect
                 window.location.href = '/dashboard.html';
 
             } catch (error) {
-                errorContainer.textContent = error.message;
+                errorContainer.textContent = error.message || 'Registration failed.';
                 errorContainer.classList.remove('hidden');
             } finally {
                 loadingOverlay.classList.add('hidden');

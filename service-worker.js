@@ -13,6 +13,7 @@ const APP_SHELL_URLS = [
     '/js/signup.js',
     '/js/main.js',
     '/js/dashboard.js',
+    '/js/supabase-client.js', // New Supabase client
     '/js/quiz_controller.js', // The new dynamically loaded module
     '/js/questions.js',
     '/js/3d/sceneManager.js',

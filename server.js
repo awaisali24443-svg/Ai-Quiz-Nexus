@@ -1,9 +1,6 @@
-
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs/promises';
-import bcrypt from 'bcryptjs';
 import { GoogleGenAI, Type } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,182 +9,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-const DATA_DIR = path.join(__dirname, 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-
 // Serve static files first. This will serve index.html for the root, and other .html files.
 app.use(express.static(path.join(__dirname)));
-// Increased payload size limit to accommodate Base64 profile pictures
-app.use(express.json({ limit: '5mb' }));
+// Use express.json middleware for parsing JSON bodies
+app.use(express.json());
 
 
-async function readUsers() {
-    try {
-        await fs.mkdir(DATA_DIR, { recursive: true });
-        const data = await fs.readFile(USERS_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            return [];
-        }
-        throw error;
-    }
-}
-
-async function writeUsers(users) {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
-}
-
-// --- API Routes ---
-
-app.post('/api/register', async (req, res) => {
-    const { username, email, password } = req.body;
-
-    if (!username || !email || !password) {
-        return res.status(400).json({ message: 'All fields are required.' });
-    }
-    
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-    if (!passwordRegex.test(password)) {
-        return res.status(400).json({ message: 'Password must be at least 8 characters long and contain at least one letter and one number.' });
-    }
-
-    const users = await readUsers();
-
-    if (users.some(user => user.email.toLowerCase() === email.toLowerCase())) {
-        return res.status(409).json({ message: 'This email is already registered. Please login instead.' });
-    }
-    
-    if (users.some(user => user.username.toLowerCase() === username.toLowerCase())) {
-        return res.status(409).json({ message: 'This username is already taken. Please choose another one.' });
-    }
-    
-    const userId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = { 
-        userId, 
-        username, 
-        email, 
-        password: hashedPassword, 
-        profilePicture: '' 
-    };
-    users.push(newUser);
-    await writeUsers(users);
-
-    res.status(201).json({ 
-        userId: newUser.userId, 
-        username: newUser.username, 
-        email: newUser.email, 
-        profilePicture: newUser.profilePicture 
-    });
-});
-
-app.post('/api/check-username', async (req, res) => {
-    const { username } = req.body;
-    if (!username) {
-        return res.status(400).json({ message: 'Username is required.' });
-    }
-    const users = await readUsers();
-    const isTaken = users.some(user => user.username.toLowerCase() === username.toLowerCase());
-    res.status(200).json({ isAvailable: !isTaken });
-});
-
-app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required.' });
-    }
-    
-    const users = await readUsers();
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-    if (!user) {
-        return res.status(401).json({ message: 'Invalid credentials. Please try again or sign up.' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-        return res.status(401).json({ message: 'Invalid credentials. Please try again or sign up.' });
-    }
-
-    res.status(200).json({ 
-        userId: user.userId, 
-        username: user.username, 
-        email: user.email, 
-        profilePicture: user.profilePicture 
-    });
-});
-
-app.post('/api/update-profile', async (req, res) => {
-    const { email, newUsername, newProfilePicture } = req.body;
-
-    if (!email || !newUsername) {
-        return res.status(400).json({ message: 'Email and new username are required.' });
-    }
-
-    const users = await readUsers();
-    const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
-
-    if (userIndex === -1) {
-        return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const usernameExists = users.some((user, index) => 
-        index !== userIndex && user.username.toLowerCase() === newUsername.toLowerCase()
-    );
-    if (usernameExists) {
-        return res.status(409).json({ message: 'This username is already taken. Please choose another one.' });
-    }
-    
-    users[userIndex].username = newUsername;
-    // newProfilePicture can be an empty string if they remove it, or null/undefined if not changing.
-    if (newProfilePicture !== undefined) { 
-        users[userIndex].profilePicture = newProfilePicture;
-    }
-
-    await writeUsers(users);
-
-    const updatedUser = users[userIndex];
-    res.status(200).json({ 
-        userId: updatedUser.userId,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        profilePicture: updatedUser.profilePicture
-    });
-});
-
-app.post('/api/change-password', async (req, res) => {
-    const { email, oldPassword, newPassword } = req.body;
-
-    if (!email || !oldPassword || !newPassword) {
-        return res.status(400).json({ message: 'All fields are required.' });
-    }
-    
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-    if (!passwordRegex.test(newPassword)) {
-        return res.status(400).json({ message: 'New password must be at least 8 characters long and contain at least one letter and one number.' });
-    }
-
-    const users = await readUsers();
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-    if (!user) {
-        return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) {
-        return res.status(401).json({ message: 'Incorrect old password.' });
-    }
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    await writeUsers(users);
-
-    res.status(200).json({ message: 'Password changed successfully.' });
-});
+// --- API Routes for AI Quiz Generation ---
 
 const quizSchema = {
     type: Type.OBJECT,
@@ -317,14 +145,4 @@ app.get('/api/ping', (req, res) => {
     res.status(200).json({ message: 'pong' });
 });
 
-async function startServer() {
-    try {
-        await fs.mkdir(DATA_DIR, { recursive: true });
-        app.listen(port, () => console.log(`Server is running on http://localhost:${port}`));
-    } catch (error) {
-        console.error("Failed to start server:", error);
-        process.exit(1);
-    }
-}
-
-startServer();
+app.listen(port, () => console.log(`Server is running on http://localhost:${port}`));
