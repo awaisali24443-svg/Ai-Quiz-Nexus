@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // Password strength is now handled by Supabase, but client-side check is good UX.
             const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
             if (!passwordRegex.test(password)) {
                 errorContainer.textContent = "Password must be at least 8 characters long and contain at least one letter and one number.";
@@ -44,12 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
                      throw new Error('Registration failed. Please try again.');
                 }
                 
-                // 2. Create a profile for the new user in the 'profiles' table
+                // 2. Create a profile for the new user, which also sets user_metadata
                 const { error: profileError } = await SupabaseClient.createProfile(data.user, username);
                 
                 if (profileError) {
                     // This is a tricky state. User is created but profile failed.
-                    // For a real app, you might want to handle this more gracefully.
                     console.error("User created but profile creation failed:", profileError);
                     throw new Error("Registration completed, but profile setup failed. Please contact support.");
                 }

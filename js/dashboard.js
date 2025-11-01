@@ -1,5 +1,6 @@
 
 import sceneManager from './3d/sceneManager.js';
+import { SupabaseClient } from './supabase-client.js';
 
 // This function is exported so the dynamically loaded module can use it.
 export function getFallbackQuestions(topicTitle, level) {
@@ -144,26 +145,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- PROGRESS & STORAGE ---
-    function getStorageKey() { return state.isGuest ? null : `aiQuizProgress_${state.session.user.email}`; }
-    function saveProgress() { if (!state.isGuest) localStorage.setItem(getStorageKey(), JSON.stringify(state.userProgress)); }
-    function loadProgress() {
-        if (state.isGuest) { state.userProgress = { totalHints: 30, topics: {} }; return; }
-        const saved = localStorage.getItem(getStorageKey());
-        if (saved) {
-            try { state.userProgress = JSON.parse(saved); } catch (e) { console.error("Could not parse user progress", e); }
+    function getStorageKey() { return state.isGuest ? null : `aiQuizProgress_${state.session.user.id}`; }
+
+    async function saveProgress() {
+        if (state.isGuest) return;
+        // Save to Supabase as primary source of truth
+        await SupabaseClient.saveUserProgress(state.session.user.id, state.userProgress);
+        // Also save to localStorage for offline access
+        localStorage.setItem(getStorageKey(), JSON.stringify(state.userProgress));
+    }
+
+    async function loadProgress() {
+        if (state.isGuest) {
+            state.userProgress = { totalHints: 30, topics: {} };
+            return;
         }
-        if (typeof state.userProgress.totalHints !== 'number') state.userProgress.totalHints = 30;
+
+        let progress = null;
+        if (navigator.onLine) {
+            progress = await SupabaseClient.loadUserProgress(state.session.user.id);
+        }
+
+        if (!progress) {
+            const saved = localStorage.getItem(getStorageKey());
+            if (saved) {
+                try { progress = JSON.parse(saved); } catch (e) { console.error("Could not parse local progress", e); }
+            }
+        }
+
+        state.userProgress = progress || { totalHints: 30, topics: {} };
+        if (typeof state.userProgress.totalHints !== 'number') {
+            state.userProgress.totalHints = 30;
+        }
     }
-    function unlockNextLevel(topicTitle, completedLevel) {
+
+    async function unlockNextLevel(topicTitle, completedLevel) {
         const p = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, history: [] };
-        if (completedLevel === p.highestLevelUnlocked && completedLevel < TOTAL_LEVELS) p.highestLevelUnlocked++;
-        state.userProgress.topics[topicTitle] = p; saveProgress();
+        if (completedLevel === p.highestLevelUnlocked && completedLevel < TOTAL_LEVELS) {
+            p.highestLevelUnlocked++;
+        }
+        state.userProgress.topics[topicTitle] = p;
+        await saveProgress();
     }
-    function recordQuizResult(topicTitle, level, score, questions) {
+    
+    async function recordQuizResult(topicTitle, level, score, questions) {
         const p = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, history: [] };
         p.history = p.history || [];
-        p.history.push({ level, score, date: new Date().toISOString(), questions: questions.map(q => ({q: q.q, answer: q.answer})) }); // only save q and answer
-        state.userProgress.topics[topicTitle] = p; saveProgress();
+        p.history.push({ level, score, date: new Date().toISOString(), questions: questions.map(q => ({q: q.q, answer: q.answer})) });
+        state.userProgress.topics[topicTitle] = p;
+        await saveProgress();
     }
 
     // --- API & PRE-FETCHING ---
@@ -180,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- 3D, THEME, BACKGROUNDS ---
     function updateBackground(topicId = null) {
-        // For new design, we don't switch 2D backgrounds, only 3D scenes
         if (state.is3DMode && sceneManager.isWebGLAvailable()) {
             document.body.classList.add('mode-3d');
             sceneManager.init(topicId || 'world_knowledge', dom.webGLContainer);
@@ -269,7 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         prefetchQuiz(state.currentTopic, progress.highestLevelUnlocked);
 
-        // Render history
         const historyLog = document.getElementById('history-log');
         historyLog.innerHTML = '';
         if (progress.history && progress.history.length > 0) {
@@ -314,44 +342,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateProfilePictureUI(profilePicture, username) {
-        if (profilePicture) {
-            dom.profilePicImg.src = profilePicture;
+    function updateProfilePictureUI(profilePictureUrl, username) {
+        if (profilePictureUrl) {
+            dom.profilePicImg.src = profilePictureUrl;
             dom.profilePicImg.classList.remove('hidden');
             dom.profileAvatarDefault.classList.add('hidden');
+            
+            document.getElementById('profile-preview-img').src = profilePictureUrl;
+            document.getElementById('profile-preview-img').classList.remove('hidden');
+            document.getElementById('profile-preview-default').classList.add('hidden');
         } else {
             dom.profilePicImg.classList.add('hidden');
             dom.profileAvatarDefault.classList.remove('hidden');
-            const initials = username.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            const initials = (username || 'G').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             dom.profileAvatarDefault.textContent = initials;
+            
+            document.getElementById('profile-preview-img').classList.add('hidden');
+            document.getElementById('profile-preview-default').classList.remove('hidden');
+            document.getElementById('profile-preview-default').textContent = initials;
         }
     }
 
     function renderProfileScreen() {
         if (state.isGuest) { navigateTo(Screen.HOME); return; }
-        const { username, email, profilePicture } = state.session.user;
-        
-        const profilePreviewImg = document.getElementById('profile-preview-img');
-        const profilePreviewDefault = document.getElementById('profile-preview-default');
+        const { username, email, profile_picture_url } = state.session.user;
         
         document.getElementById('profile-username').value = username;
         document.getElementById('profile-email').value = email;
-
-        if (profilePicture) {
-            profilePreviewImg.src = profilePicture;
-            profilePreviewImg.classList.remove('hidden');
-            profilePreviewDefault.classList.add('hidden');
-        } else {
-            profilePreviewImg.classList.add('hidden');
-            profilePreviewDefault.classList.remove('hidden');
-            const initials = username.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            profilePreviewDefault.textContent = initials;
-        }
+        updateProfilePictureUI(profile_picture_url, username);
     }
 
     // --- NAVIGATION ---
     async function navigateTo(screenId, data = {}) {
-        // Cleanup previous screen if necessary
         if (state.currentScreen === Screen.QUIZ && quizControllerModule) {
             quizControllerModule.cleanupQuiz();
         }
@@ -380,9 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     navigateTo(Screen.LEVEL);
                 } else {
                     if (!state.isGuest && state.gameMode === 'topic') {
-                        recordQuizResult(state.currentTopic.title, state.currentLevel, quizResult.score, quizResult.questions);
-                        if (quizResult.score >= SCORE_TO_UNLOCK_NEXT_LEVEL) unlockNextLevel(state.currentTopic.title, state.currentLevel);
-                        saveProgress();
+                        await recordQuizResult(state.currentTopic.title, state.currentLevel, quizResult.score, quizResult.questions);
+                        if (quizResult.score >= SCORE_TO_UNLOCK_NEXT_LEVEL) {
+                            await unlockNextLevel(state.currentTopic.title, state.currentLevel);
+                        }
                     }
                     navigateTo(Screen.RESULTS, quizResult);
                 }
@@ -412,35 +435,61 @@ document.addEventListener('DOMContentLoaded', () => {
             showLoading(true, "Updating profile...");
             try {
                 const newUsername = document.getElementById('profile-username').value;
-                const body = { email: state.session.user.email, newUsername: newUsername, newProfilePicture: state.newPfpData };
-                const response = await fetch('/api/update-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-                const updatedUser = await response.json();
-                if (!response.ok) throw new Error(updatedUser.message);
+                let pfpUrl = state.session.user.profile_picture_url;
 
-                window.auth.saveSession(updatedUser);
-                state.session = window.auth.getSession();
-                updateProfilePictureUI(updatedUser.profilePicture, updatedUser.username);
-                state.newPfpData = null;
+                if (state.newPfpData) {
+                    const { data: uploadData, error: uploadError } = await SupabaseClient.uploadProfilePicture(state.session.user.id, state.newPfpData);
+                    if (uploadError) throw uploadError;
+                    pfpUrl = uploadData.publicUrl;
+                }
+
+                const { data: updatedUser, error: updateError } = await SupabaseClient.updateProfileAndUser(state.session.user.id, { username: newUsername, profile_picture_url: pfpUrl });
+                if (updateError) throw updateError;
+                
+                // Manually merge updates into local session state to avoid full reload
+                state.session.user = { ...state.session.user, ...updatedUser.user_metadata, profile_picture_url: pfpUrl, username: newUsername };
+
                 showToast('Profile updated successfully!');
-                navigateTo(Screen.HOME);
-            } catch (error) { showToast(`Update failed: ${error.message}`, true);
-            } finally { showLoading(false); }
+                updateProfilePictureUI(pfpUrl, newUsername);
+                state.newPfpData = null;
+            } catch (error) { 
+                showToast(`Update failed: ${error.message}`, true);
+            } finally { 
+                showLoading(false); 
+            }
         });
 
         document.getElementById('password-form').addEventListener('submit', async (e) => {
             e.preventDefault(); if (state.isGuest) return;
             const oldPassword = document.getElementById('old-password').value;
             const newPassword = document.getElementById('new-password').value;
-            if (newPassword !== document.getElementById('confirm-new-password').value) { showToast("New passwords do not match.", true); return; }
+            
+            if (newPassword !== document.getElementById('confirm-new-password').value) {
+                showToast("New passwords do not match.", true);
+                return;
+            }
+            if (!oldPassword) {
+                showToast("Old password is required to verify your identity.", true);
+                return;
+            }
+
             showLoading(true, "Changing password...");
             try {
-                const response = await fetch('/api/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: state.session.user.email, oldPassword, newPassword }) });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.message);
+                // Re-authenticate to verify old password
+                const { error: reauthError } = await SupabaseClient.signIn(state.session.user.email, oldPassword);
+                if (reauthError) throw new Error("Incorrect old password.");
+                
+                // If re-auth is successful, update to the new password
+                const { error: updateError } = await SupabaseClient.updateUserPassword(newPassword);
+                if (updateError) throw updateError;
+                
                 showToast('Password changed successfully!');
                 e.target.reset();
-            } catch (error) { showToast(`Error: ${error.message}`, true);
-            } finally { showLoading(false); }
+            } catch (error) { 
+                showToast(`Error: ${error.message}`, true);
+            } finally { 
+                showLoading(false);
+            }
         });
     }
 
@@ -462,30 +511,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         state.session = await window.auth.getSession();
-
-        if (!state.session) {
-            console.error("No session found on dashboard. Halting initialization.");
-            return;
-        }
+        if (!state.session) { return; }
 
         state.isGuest = state.session.user === 'guest';
         if (state.isGuest) {
             dom.guestBanner.classList.remove('hidden');
             updateProfilePictureUI(null, 'Guest');
-            dom.appHeader.style.top = '48px'; dom.mainContent.style.paddingTop = `${120 + 48}px`;
+            dom.appHeader.style.top = '48px'; 
+            dom.mainContent.style.paddingTop = '128px';
         } else {
-            loadProgress(); // Load progress for registered users
-            updateProfilePictureUI(state.session.user.profilePicture, state.session.user.username);
+            await loadProgress();
+            updateProfilePictureUI(state.session.user.profile_picture_url, state.session.user.username);
         }
         
         setupProfileEventHandlers();
-        // New nav links
+        
+        document.getElementById('logout-btn').addEventListener('click', () => window.auth.logout());
         document.getElementById('profile-nav-link').addEventListener('click', (e) => { e.preventDefault(); if (!state.isGuest) navigateTo(Screen.PROFILE); });
         document.getElementById('settings-nav-link').addEventListener('click', (e) => { e.preventDefault(); if (!state.isGuest) navigateTo(Screen.PROFILE); });
-        // Old profile button
         dom.profileButton.addEventListener('click', () => { if (!state.isGuest) navigateTo(Screen.PROFILE); });
         
-        // Mobile nav buttons
         document.querySelectorAll('.mobile-nav .nav-item').forEach(btn => {
             btn.addEventListener('click', () => {
                 const targetScreen = btn.dataset.screen;
@@ -516,9 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.querySelector('.logo').addEventListener('click', (e) => { e.preventDefault(); playSound('click'); navigateTo(Screen.HOME); });
 
-        setInterval(() => {
-            fetch('/api/ping').catch(err => console.log("Keep-alive ping failed:", err));
-        }, 4 * 60 * 1000); // Every 4 minutes
+        setInterval(() => { fetch('/api/ping').catch(() => {}); }, 4 * 60 * 1000);
 
         navigateTo(Screen.HOME);
     }

@@ -153,7 +153,7 @@ function handleHint() {
 async function getQuizQuestions(prefetchPromise, answeredQuestions) {
     // 1. Try to load from Supabase first (for non-guest users in topic mode)
     if (!appState.isGuest && appState.gameMode === 'topic') {
-        const dbQuestions = await SupabaseClient.loadQuestions(appState.currentTopic.dbId, appState.currentLevel);
+        const dbQuestions = await SupabaseClient.loadQuestions(appState.currentTopic.id, appState.currentLevel);
         if (dbQuestions && dbQuestions.length >= QUESTIONS_PER_QUIZ) {
             utils.showToast("📚 Questions loaded from database.");
             return dbQuestions;
