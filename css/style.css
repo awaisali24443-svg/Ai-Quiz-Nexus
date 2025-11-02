@@ -341,14 +341,17 @@ main {
     padding-top: 100px;
     padding-bottom: 80px;
     transition: padding-top 0.3s ease-in-out, opacity 0.5s ease;
+}
+
+/* On dashboard page, hide main until JS loads it */
+#app-container > main {
     visibility: hidden;
     opacity: 0;
 }
 
+
 /* This applies to main on welcome/auth pages specifically */
 .welcome-page, .auth-page {
-    visibility: visible;
-    opacity: 1;
     padding-top: 0;
     padding-bottom: 0;
 }
