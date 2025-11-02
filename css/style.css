@@ -68,24 +68,27 @@ body, [data-theme="dark"] {
     padding: 0;
 }
 
+html {
+    height: 100%;
+}
+
 body {
     background-color: var(--bg-dark);
     color: var(--text-light);
     font-family: var(--font-body);
     line-height: 1.6;
-    overflow-x: hidden; /* Prevent horizontal scroll */
-    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
     transition: background-color 0.4s ease, color 0.4s ease;
-
-    /* Core layout fix: Make body the primary flex container */
     display: flex;
     flex-direction: column;
     min-height: 100vh;
 }
 
-/* --- Core Layout Containers --- */
-.static-page-container, #app-container {
-    flex-grow: 1; /* Make the main container grow to fill the body */
+/* --- CORE LAYOUT CONTAINERS --- */
+.static-page-container,
+#app-container {
+    flex: 1 1 auto; /* Grow to fill body */
     display: flex;
     flex-direction: column;
 }
@@ -99,7 +102,7 @@ body {
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 1rem; /* Adjusted for mobile */
+    padding: 0 1rem;
 }
 
 .hidden {
@@ -179,8 +182,8 @@ body.mode-3d #animated-bg-container {
     background: #000 url(https://www.transparenttextures.com/patterns/stardust.png);
     animation: move-twink-back 200s linear infinite;
 }
-.islamic-bg { 
-    background-image: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="p" patternUnits="userSpaceOnUse" width="50" height="50"><path d="M50 25L25 50L0 25L25 0z" fill="none" stroke="%23FFBD3E" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23p)"/></svg>'); 
+.islamic-bg {
+    background-image: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="p" patternUnits="userSpaceOnUse" width="50" height="50"><path d="M50 25L25 50L0 25L25 0z" fill="none" stroke="%23FFBD3E" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23p)"/></svg>');
     background-color: #001d3d;
 }
 .history-bg {
@@ -193,9 +196,9 @@ body.mode-3d #animated-bg-container {
 .science-bg {
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><circle cx="25" cy="25" r="5" fill="%2300F6A3" fill-opacity="0.2"/><line x1="25" y1="25" x2="0" y2="0" stroke="%2300F6A3" stroke-width="0.5"/><line x1="25" y1="25" x2="50" y2="50" stroke="%2300F6A3" stroke-width="0.5"/></svg>');
 }
-.math-bg { 
-    background-image: linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.05) 75%), linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.05) 75%); 
-    background-size: 30px 30px; 
+.math-bg {
+    background-image: linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.05) 75%), linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.05) 75%);
+    background-size: 30px 30px;
     background-position: 0 0, 15px 15px;
 }
 
@@ -219,9 +222,10 @@ body.mode-3d #animated-bg-container {
     gap: 0.5rem;
 }
 
-#app-footer, .cyber-footer { 
+#app-footer, .cyber-footer {
     padding: 1rem 0;
     position: relative;
+    flex-shrink: 0; /* Prevent footer from shrinking */
 }
 .desktop-footer-content, .cyber-footer p {
     font-family: var(--font-title);
@@ -237,7 +241,7 @@ body.mode-3d #animated-bg-container {
     background: #ffffff;
     border-top: 1px solid var(--border-color);
 }
-[data-theme="light"] .desktop-footer-content, 
+[data-theme="light"] .desktop-footer-content,
 [data-theme="light"] .cyber-footer p {
     text-shadow: none;
     animation: none;
@@ -338,9 +342,9 @@ body.mode-3d #animated-bg-container {
 [data-theme="light"] .icon-btn:hover { background-color: rgba(0, 0, 0, 0.05); }
 
 
-/* --- Main Content & Layout Fix --- */
+/* --- Main Content & Layout --- */
 main {
-    flex-grow: 1; /* This makes the main element fill available vertical space */
+    flex: 1 1 auto; /* CRITICAL: This makes the main element fill available vertical space */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -689,8 +693,8 @@ main {
 .review-options li { list-style-type: none; padding: 0.5rem; border-radius: 6px; margin-top: 0.25rem; position: relative; }
 .review-options li.correct { background: color-mix(in srgb, var(--accent-green) 20%, transparent); }
 .review-options li.incorrect-user-choice { background: color-mix(in srgb, var(--danger) 20%, transparent); }
-.review-options li.user-choice::after { 
-    content: 'Your Answer'; 
+.review-options li.user-choice::after {
+    content: 'Your Answer';
     font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-light);
