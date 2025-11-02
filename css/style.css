@@ -332,28 +332,23 @@ body.mode-3d #animated-bg-container {
 [data-theme="light"] .icon-btn:hover { background-color: rgba(0, 0, 0, 0.05); }
 
 
-/* --- Screens --- */
+/* --- Main Content & Layout Fix --- */
 main {
-    flex-grow: 1;
+    flex-grow: 1; /* This makes the main element fill available vertical space */
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+}
+
+/* Scoped styles for the dashboard main content ONLY */
+#app-container > main {
     padding-top: 100px;
     padding-bottom: 80px;
     transition: padding-top 0.3s ease-in-out, opacity 0.5s ease;
-}
-
-/* On dashboard page, hide main until JS loads it */
-#app-container > main {
+    /* Hide on load, dashboard.js will make it visible */
     visibility: hidden;
     opacity: 0;
-}
-
-
-/* This applies to main on welcome/auth pages specifically */
-.welcome-page, .auth-page {
-    padding-top: 0;
-    padding-bottom: 0;
 }
 
 .screen { width: 100%; animation: fadeIn 0.8s ease-in-out; }
@@ -368,7 +363,7 @@ main {
 
 /* Welcome Screen */
 .welcome-page { text-align: center; }
-.welcome-container { max-width: 800px; }
+.welcome-container { max-width: 800px; padding: 1rem; }
 .welcome-logo { width: 100px; height: 100px; margin: 0 auto 1.5rem; }
 .welcome-title { font-family: var(--font-title); font-size: clamp(2.5rem, 10vw, 4rem); font-weight: 900; margin-bottom: 1rem; text-shadow: 0 0 15px var(--primary); }
 .welcome-subtitle { font-size: clamp(1rem, 4vw, 1.2rem); color: var(--text-medium); margin-bottom: 3rem; }
@@ -382,7 +377,6 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
 }
 .auth-container {
     width: 100%;
@@ -771,7 +765,7 @@ main {
     .topic-grid { grid-template-columns: 1fr; }
 
     /* Mobile Nav Bar */
-    main {
+    #app-container > main {
         padding-bottom: 100px; /* Space for mobile nav */
     }
     #app-footer {
