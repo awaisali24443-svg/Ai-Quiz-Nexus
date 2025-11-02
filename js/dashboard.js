@@ -272,4 +272,7 @@ class DashboardApp {
     }
 }
 
-new DashboardApp();
+// Check if we are on the dashboard page before initializing
+if (document.getElementById('app-container')) {
+    new DashboardApp();
+}

@@ -76,6 +76,9 @@ body {
     overflow-x: hidden; /* Prevent horizontal scroll */
     -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
     transition: background-color 0.4s ease, color 0.4s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 #app-container {
@@ -341,6 +344,15 @@ main {
     visibility: hidden;
     opacity: 0;
 }
+
+/* This applies to main on welcome/auth pages specifically */
+.welcome-page, .auth-page {
+    visibility: visible;
+    opacity: 1;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
 .screen { width: 100%; animation: fadeIn 0.8s ease-in-out; }
 .screen-content { position: relative; z-index: 2; }
 .text-center { text-align: center; }
