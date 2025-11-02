@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const usernameDisplay = document.getElementById('username-display');
         const authActionButton = document.getElementById('auth-action-btn');
         const profileNavBtn = document.querySelector('.nav-item[data-screen="profile-screen"]');
-        const settingsBtn = document.getElementById('settings-btn');
+        const settingsContainer = document.querySelector('.settings-container');
 
         if (user.isGuest) {
             dom.guestBanner.classList.remove('hidden');
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             authActionButton.textContent = 'Login';
             authActionButton.onclick = () => { window.location.href = '/login.html'; };
             if (profileNavBtn) profileNavBtn.classList.add('hidden');
-            if (settingsBtn) settingsBtn.classList.add('hidden');
+            if (settingsContainer) settingsContainer.classList.add('hidden');
         } else {
             dom.guestBanner.classList.add('hidden');
             dom.appHeader.style.top = '0px';
@@ -39,14 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
             authActionButton.textContent = 'Logout';
             authActionButton.onclick = () => logout();
             if (profileNavBtn) profileNavBtn.classList.remove('hidden');
-            if (settingsBtn) settingsBtn.classList.remove('hidden');
+            if (settingsContainer) settingsContainer.classList.remove('hidden');
         }
     }
 
-    function updateBackground(topicId = null) {
+    async function updateBackground(topicId = null) {
         if (state.is3DMode && sceneManager.isWebGLAvailable()) {
             document.body.classList.add('mode-3d');
-            sceneManager.init(topicId || 'world_knowledge', dom.webGLContainer);
+            await sceneManager.init(topicId || 'world_knowledge', dom.webGLContainer);
         } else {
             document.body.classList.remove('mode-3d');
             sceneManager.destroy();
@@ -61,7 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleBtn.querySelector('span').textContent = enabled ? '3D Background' : '2D Background';
             toggleBtn.classList.toggle('active', enabled);
         }
-        updateBackground(state.currentTopic?.id);
+        showLoading(true, "Switching visuals...");
+        updateBackground(state.currentTopic?.id).finally(() => showLoading(false));
     }
 
     function handleTopicSelection(topic) {
@@ -92,9 +93,11 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.toggle('active', item.dataset.screen === screenId);
         });
         
-        const backgroundTopicId = (screenId === Screen.LEVEL || screenId === Screen.QUIZ) && state.currentTopic ? state.currentTopic.id : null;
+        showLoading(true, "Loading...");
+        const backgroundTopicId = (screenId === Screen.LEVEL || screenId === Screen.QUIZ) && state.currentTopic ? state.currentTopic.id : 'default';
         dom.appContainer.className = backgroundTopicId ? `bg-${backgroundTopicId}` : 'bg-default';
-        updateBackground(backgroundTopicId);
+        await updateBackground(backgroundTopicId);
+        showLoading(false);
         
         switch (screenId) {
             case Screen.HOME: 
@@ -161,6 +164,10 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('offline', () => dom.offlineBanner.classList.remove('hidden'));
         window.addEventListener('online', () => dom.offlineBanner.classList.add('hidden'));
         if (!navigator.onLine) dom.offlineBanner.classList.remove('hidden');
+        
+        // Prevent layout shift by showing main content only after setup
+        dom.mainContent.style.visibility = 'visible';
+        dom.mainContent.style.opacity = '1';
     }
 
     init();

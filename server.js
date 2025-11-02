@@ -5,6 +5,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import bcrypt from 'bcryptjs';
 import fs from 'fs/promises';
 import { constants as fs_constants } from 'fs';
+import { CHALLENGE_TOPICS_LIST } from './js/state.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,6 +13,32 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Simple async mutex to prevent race conditions on file writes
+class Mutex {
+  constructor() {
+    this._queue = [];
+    this._locked = false;
+  }
+  acquire() {
+    return new Promise(resolve => {
+      this._queue.push(resolve);
+      this._tryAcquire();
+    });
+  }
+  _tryAcquire() {
+    if (!this._locked && this._queue.length > 0) {
+      this._locked = true;
+      this._queue.shift()();
+    }
+  }
+  release() {
+    this._locked = false;
+    this._tryAcquire();
+  }
+}
+const fileLock = new Mutex();
+
 
 // --- User Data Persistence ---
 const DATA_DIR = path.join(__dirname, 'data');
@@ -23,7 +50,12 @@ async function readUsers() {
         await fs.access(USERS_FILE, fs_constants.F_OK);
         const data = await fs.readFile(USERS_FILE, 'utf-8');
         if (data) {
-            users = JSON.parse(data);
+            try {
+                users = JSON.parse(data);
+            } catch(parseError) {
+                console.error(`CRITICAL: Corrupted users.json file. Could not parse. ${parseError}. The file will not be overwritten.`);
+                users = []; // Operate with no users in memory, but don't delete the corrupted file.
+            }
         } else {
             users = [];
         }
@@ -68,18 +100,25 @@ app.post('/api/auth/register', async (req, res) => {
     if (!username || !password) {
         return res.status(400).json({ message: 'Username and password are required.' });
     }
-    if (users.find(u => u.username === username)) {
-        return res.status(409).json({ message: 'Username already exists.' });
+
+    await fileLock.acquire();
+    try {
+        await readUsers(); // Read the latest user data inside the lock
+        if (users.find(u => u.username === username)) {
+            return res.status(409).json({ message: 'Username already exists.' });
+        }
+        const hashedPassword = bcrypt.hashSync(password, 10);
+        const newUser = {
+            id: `user-${Date.now()}`,
+            username,
+            password: hashedPassword
+        };
+        users.push(newUser);
+        await writeUsers();
+        res.status(201).json({ message: 'User registered successfully.' });
+    } finally {
+        fileLock.release();
     }
-    const hashedPassword = bcrypt.hashSync(password, 10);
-    const newUser = {
-        id: `user-${Date.now()}`,
-        username,
-        password: hashedPassword
-    };
-    users.push(newUser);
-    await writeUsers();
-    res.status(201).json({ message: 'User registered successfully.' });
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -180,8 +219,7 @@ app.post('/api/generate-time-challenge', async (req, res) => {
     }
 
     const questionsPerQuiz = 10;
-    const TOPICS = [ 'Programming Languages', 'AI & Technology', 'Space & Astronomy', 'Chemistry', 'Physics', 'World Knowledge', 'History', 'Science Inventions', 'Biology' ];
-    const shuffledTopics = TOPICS.sort(() => 0.5 - Math.random());
+    const shuffledTopics = CHALLENGE_TOPICS_LIST.sort(() => 0.5 - Math.random());
     const selectedTopics = shuffledTopics.slice(0, 5).join(', ');
 
     let ai;

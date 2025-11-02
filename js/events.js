@@ -7,6 +7,12 @@ import { renderHomeScreen, renderLevelScreen, renderReviewModal, renderProfileSc
 export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
 
     // --- Settings Menu ---
+    dom.settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // prevent document click listener from closing it immediately
+        playSound('click');
+        dom.settingsMenu.classList.toggle('open');
+    });
+
     dom.toggle3DBtn.addEventListener('click', () => {
         playSound('click');
         set3DMode(!state.is3DMode);
@@ -60,8 +66,17 @@ export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
         if (state.currentScreen !== Screen.HOME) navigateTo(Screen.HOME);
     });
 
-    // --- Global Click Handler for Dynamic Buttons ---
+    // --- Global Click Handler for Dynamic Buttons & Closing Menus ---
     document.addEventListener('click', e => {
+        // --- Close Settings Menu ---
+        if (dom.settingsMenu.classList.contains('open')) {
+            const settingsContainer = e.target.closest('.settings-container');
+            if (!settingsContainer) {
+                dom.settingsMenu.classList.remove('open');
+            }
+        }
+        
+        // --- Button Actions ---
         const btn = e.target.closest('button');
         if (!btn) return;
         
