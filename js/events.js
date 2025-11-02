@@ -46,9 +46,9 @@ export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
     // --- Navigation ---
     dom.mobileNavItems.forEach(btn => {
         btn.addEventListener('click', () => {
-            playSound('click');
             const targetScreen = btn.dataset.screen;
             if(targetScreen && state.currentScreen !== targetScreen) {
+                playSound('click');
                 navigateTo(targetScreen);
             }
         });

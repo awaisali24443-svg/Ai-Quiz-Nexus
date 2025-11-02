@@ -1,4 +1,3 @@
-
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
 
 let scene, camera, renderer;
@@ -122,6 +121,7 @@ function init3DScene(container) {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.domElement.id = 'matrix-canvas';
     container.appendChild(renderer.domElement);
     
     animate();

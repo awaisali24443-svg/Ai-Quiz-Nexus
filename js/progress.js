@@ -19,9 +19,6 @@ export async function saveProgress() {
     const storageKey = getStorageKey();
     if (!storageKey) return;
     
-    // Don't save progress for guests
-    if (state.user.isGuest) return;
-
     console.log(`Saving progress for ${storageKey}...`);
     localStorage.setItem(storageKey, JSON.stringify(state.userProgress));
 }

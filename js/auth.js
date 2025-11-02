@@ -1,5 +1,3 @@
-
-
 export function getCurrentUser() {
     const user = localStorage.getItem('currentUser');
     try {
@@ -32,6 +30,7 @@ export function redirectIfLoggedIn() {
 
 export function logout() {
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('aiQuizProgress_guest');
     window.location.href = '/login.html';
 }
 

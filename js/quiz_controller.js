@@ -5,8 +5,36 @@ let appState = {};
 let dom = {};
 let utils = {};
 let timerIntervalId = null;
+let loadingIntervalId = null;
 
 const QUESTIONS_PER_QUIZ = 10;
+const loadingMessages = [
+    "Contacting the AI oracle...",
+    "Generating mind-bending questions...",
+    "Calibrating difficulty matrix...",
+    "Assembling your challenge...",
+    "Waking up the AI..."
+];
+
+function startLoadingAnimation(textElement) {
+    stopLoadingAnimation();
+    let messageIndex = 0;
+    textElement.textContent = loadingMessages[messageIndex];
+    loadingIntervalId = setInterval(() => {
+        messageIndex = (messageIndex + 1) % loadingMessages.length;
+        gsap.to(textElement, {
+            opacity: 0, y: -10, duration: 0.3, onComplete: () => {
+                textElement.textContent = loadingMessages[messageIndex];
+                gsap.to(textElement, { opacity: 1, y: 0, duration: 0.3 });
+            }
+        });
+    }, 2000);
+}
+
+function stopLoadingAnimation() {
+    if (loadingIntervalId) clearInterval(loadingIntervalId);
+    loadingIntervalId = null;
+}
 
 function resetQuizState() {
     stopTimer();
@@ -153,6 +181,7 @@ async function getQuizQuestions(answeredQuestions) {
 
 export function cleanupQuiz() {
     stopTimer();
+    stopLoadingAnimation();
 }
 
 export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils, answeredQuestions = []) {
@@ -173,7 +202,9 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
 
         resetQuizState();
         dom.quizProgressBar.style.width = '0%';
-        utils.showLoading(true, "Crafting your challenge...");
+        utils.showLoading(true);
+        startLoadingAnimation(dom.loadingText);
+
 
         try {
             const questions = await getQuizQuestions(answeredQuestions);
@@ -193,6 +224,7 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
             resolve({ error: true });
         } finally {
             utils.showLoading(false);
+            stopLoadingAnimation();
         }
     });
 }

@@ -14,7 +14,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // --- User Data Persistence ---
-const USERS_FILE = path.join(__dirname, 'css', 'data', 'users.json');
+const DATA_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
 let users = [];
 
 async function readUsers() {
@@ -28,8 +29,14 @@ async function readUsers() {
         }
     } catch (error) {
         if (error.code === 'ENOENT') {
-            await fs.writeFile(USERS_FILE, '[]', 'utf-8');
-            users = [];
+            try {
+                await fs.mkdir(DATA_DIR, { recursive: true });
+                await fs.writeFile(USERS_FILE, '[]', 'utf-8');
+                users = [];
+            } catch (writeError) {
+                console.error('Error creating data directory or users file:', writeError);
+                users = [];
+            }
         } else {
             console.error('Error reading users file:', error);
             users = [];
