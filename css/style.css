@@ -185,10 +185,17 @@ body.mode-3d #animated-bg-container {
 }
 .mobile-nav { display: none; }
 
+body.light-mode #app-footer,
 body.light-mode .cyber-footer {
-    color: var(--text-dark);
+    background: #ffffff;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-medium);
+}
+body.light-mode .desktop-footer-content, 
+body.light-mode .cyber-footer p {
     text-shadow: none;
     animation: none;
+    color: var(--text-medium);
 }
 
 @keyframes pulse-text {
@@ -357,6 +364,23 @@ body.light-mode .welcome-title { text-shadow: none; }
     text-align: center;
     margin-bottom: 1rem;
     min-height: 1.2em;
+}
+
+body.light-mode .auth-container {
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+}
+body.light-mode .auth-title {
+    text-shadow: none;
+}
+body.light-mode .auth-form input {
+    background-color: #f0f2f5;
+    border-color: #ced4da;
+}
+body.light-mode .auth-form input:focus {
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+}
+body.light-mode .auth-switch-link a:hover {
+    text-shadow: none;
 }
 
 /* Home Screen (Topic Grid) */
