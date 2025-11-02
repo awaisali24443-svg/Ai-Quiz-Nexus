@@ -2,6 +2,9 @@ import { state, TOTAL_LEVELS } from './state.js';
 
 function getStorageKey() {
     if (!state.user || !state.user.id) return null;
+    if (state.user.isGuest) {
+        return 'aiQuizProgress_guest';
+    }
     return `aiQuizProgress_${state.user.id}`;
 }
 
@@ -9,13 +12,14 @@ export async function saveProgress() {
     const storageKey = getStorageKey();
     if (!storageKey) return;
     
-    console.log(`Saving progress for user ${state.user.id}...`);
+    console.log(`Saving progress for ${storageKey}...`);
     localStorage.setItem(storageKey, JSON.stringify(state.userProgress));
 }
 
 export async function loadProgress() {
     const storageKey = getStorageKey();
     if (!storageKey) {
+        console.log("No user found, starting fresh progress.");
         state.userProgress = { topics: {} };
         return;
     }
@@ -24,13 +28,14 @@ export async function loadProgress() {
     if (saved) {
         try {
             state.userProgress = JSON.parse(saved);
-            console.log('User progress loaded from localStorage.');
+            console.log(`Progress loaded for ${storageKey}.`);
         } catch (e) {
             console.error("Could not parse user progress", e);
             state.userProgress = { topics: {} };
         }
     } else {
          state.userProgress = { topics: {} };
+         console.log(`No saved progress found for ${storageKey}, starting fresh.`);
     }
 }
 

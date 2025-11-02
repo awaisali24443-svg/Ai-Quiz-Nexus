@@ -1,4 +1,5 @@
 
+
 export function getCurrentUser() {
     const user = localStorage.getItem('currentUser');
     try {
@@ -11,19 +12,17 @@ export function getCurrentUser() {
 
 export function checkAuth() {
     const user = getCurrentUser();
-    if (!user) {
-        // Redirect to login, but preserve the current path to redirect back after login
-        // For simplicity, we just redirect to login page.
-        window.location.href = '/login.html';
-        return null;
+    if (user) {
+        return { ...user, isGuest: false };
     }
-    // Update UI with username
-    const usernameDisplay = document.getElementById('username-display');
-    if (usernameDisplay) {
-        usernameDisplay.textContent = user.username;
-    }
-    return user;
+    // If no user, create a guest user object
+    return {
+        id: 'guest',
+        username: 'Guest',
+        isGuest: true
+    };
 }
+
 
 export function redirectIfLoggedIn() {
     if (getCurrentUser()) {
@@ -34,4 +33,11 @@ export function redirectIfLoggedIn() {
 export function logout() {
     localStorage.removeItem('currentUser');
     window.location.href = '/login.html';
+}
+
+export function login(user) {
+    // Clear any guest progress before logging in a real user
+    localStorage.removeItem('aiQuizProgress_guest');
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    window.location.href = '/dashboard.html';
 }

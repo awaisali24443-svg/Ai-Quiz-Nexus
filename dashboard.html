@@ -43,11 +43,14 @@
                         <!-- Icon will be dynamically inserted by main.js -->
                     </button>
                     <button id="reset-progress-btn" class="btn btn-secondary">Reset</button>
-                    <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                    <button id="auth-action-btn" class="btn btn-secondary">Logout</button>
                 </div>
             </div>
         </header>
 
+        <div id="guest-banner" class="hidden">
+            <p>You are in Guest Mode. Your progress is saved on this device only. <a href="/signup.html">Sign up</a> to save progress permanently.</p>
+        </div>
         <div id="offline-banner" class="hidden">
             <p>Offline mode activated – data will be saved locally.</p>
         </div>

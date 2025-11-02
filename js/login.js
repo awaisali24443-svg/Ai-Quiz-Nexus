@@ -1,4 +1,4 @@
-import { redirectIfLoggedIn } from './auth.js';
+import { redirectIfLoggedIn, login } from './auth.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     redirectIfLoggedIn();
@@ -29,8 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (response.ok) {
-                localStorage.setItem('currentUser', JSON.stringify(data.user));
-                window.location.href = '/dashboard.html';
+                login(data.user);
             } else {
                 errorMessage.textContent = data.message || 'An unknown error occurred.';
             }

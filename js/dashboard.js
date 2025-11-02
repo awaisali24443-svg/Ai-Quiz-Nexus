@@ -1,4 +1,5 @@
 
+
 import sceneManager from './3d/sceneManager.js';
 import { state, Screen } from './state.js';
 import { dom } from './dom.js';
@@ -7,13 +8,37 @@ import { renderHomeScreen, renderLevelScreen, renderResultsScreen } from './ui.j
 import { showLoading, showToast, playSound, initAudio } from './utils.js';
 import { initEventListeners } from './events.js';
 import { getFallbackQuestions } from './questions-handler.js';
-import { checkAuth } from './auth.js';
+import { checkAuth, logout } from './auth.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
     
     let prefetchPromise = null;
     let quizControllerModule = null;
+
+    function updateAuthUI(user) {
+        const guestBanner = document.getElementById('guest-banner');
+        const usernameDisplay = document.getElementById('username-display');
+        const authActionButton = document.getElementById('auth-action-btn');
+        const mainContent = document.querySelector('main');
+        const header = document.getElementById('app-header');
+
+        if (user.isGuest) {
+            guestBanner.classList.remove('hidden');
+            header.style.top = `${guestBanner.offsetHeight}px`;
+            mainContent.style.paddingTop = `${80 + guestBanner.offsetHeight}px`;
+            usernameDisplay.textContent = 'Guest';
+            authActionButton.textContent = 'Login';
+            authActionButton.onclick = () => { window.location.href = '/login.html'; };
+        } else {
+            guestBanner.classList.add('hidden');
+            header.style.top = '0px';
+            mainContent.style.paddingTop = '80px';
+            usernameDisplay.textContent = user.username;
+            authActionButton.textContent = 'Logout';
+            authActionButton.onclick = () => logout();
+        }
+    }
 
     function updateBackground(topicId = null) {
         if (state.is3DMode && sceneManager.isWebGLAvailable()) {
@@ -99,9 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function init() {
         console.log("Initializing dashboard...");
         
-        const user = checkAuth();
-        if (!user) return; // Stop execution if redirected to login
-        state.user = user;
+        state.user = checkAuth();
+        updateAuthUI(state.user);
 
         initAudio();
         

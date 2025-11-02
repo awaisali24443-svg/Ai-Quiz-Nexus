@@ -1,15 +1,16 @@
 
+
 import { dom } from './dom.js';
 import { state, Screen } from './state.js';
 import { saveProgress } from './progress.js';
 import { showToast, playSound } from './utils.js';
-import { logout } from './auth.js';
 
 export function initEventListeners(navigateTo) {
     dom.resetProgressBtn.addEventListener('click', () => {
         playSound('click');
         if (confirm('Are you sure you want to reset all your progress? This cannot be undone.')) {
-            localStorage.removeItem(`aiQuizProgress_${state.user.id}`);
+            const key = state.user.isGuest ? 'aiQuizProgress_guest' : `aiQuizProgress_${state.user.id}`;
+            localStorage.removeItem(key);
             state.userProgress = { topics: {} };
             
             // Re-render the current screen to reflect the change
@@ -18,11 +19,6 @@ export function initEventListeners(navigateTo) {
 
             showToast('Progress has been reset.');
         }
-    });
-
-    document.getElementById('logout-btn').addEventListener('click', () => {
-        playSound('click');
-        logout();
     });
 
     dom.mobileNavItems.forEach(btn => {
