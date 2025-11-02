@@ -1,34 +1,67 @@
 
-
 import { dom } from './dom.js';
 import { state, Screen } from './state.js';
-import { saveProgress } from './progress.js';
+import { loadProgress, saveProgress } from './progress.js';
 import { showToast, playSound } from './utils.js';
+import { renderHomeScreen, renderLevelScreen, renderReviewModal } from './ui.js';
 
-export function initEventListeners(navigateTo) {
+export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
+
+    // --- Settings Menu ---
+    dom.toggle3DBtn.addEventListener('click', () => {
+        playSound('click');
+        set3DMode(!state.is3DMode);
+    });
+    
     dom.resetProgressBtn.addEventListener('click', () => {
         playSound('click');
-        if (confirm('Are you sure you want to reset all your progress? This cannot be undone.')) {
-            const key = state.user.isGuest ? 'aiQuizProgress_guest' : `aiQuizProgress_${state.user.id}`;
-            localStorage.removeItem(key);
-            state.userProgress = { topics: {} };
-            
-            // Re-render the current screen to reflect the change
-            if (state.currentScreen === Screen.HOME) navigateTo(Screen.HOME);
-            if (state.currentScreen === Screen.LEVEL) navigateTo(Screen.LEVEL);
-
-            showToast('Progress has been reset.');
-        }
+        dom.resetConfirmModal.classList.remove('hidden');
     });
 
+    // --- Modals ---
+    dom.cancelResetBtn.addEventListener('click', () => {
+        playSound('click');
+        dom.resetConfirmModal.classList.add('hidden');
+    });
+    
+    dom.confirmResetBtn.addEventListener('click', async () => {
+        playSound('click');
+        const key = state.user.isGuest ? 'aiQuizProgress_guest' : `aiQuizProgress_${state.user.id}`;
+        localStorage.removeItem(key);
+        await loadProgress();
+        
+        // Re-render the current screen to reflect the change
+        if (state.currentScreen === Screen.HOME) renderHomeScreen((topic) => navigateTo(Screen.LEVEL, { topic }));
+        if (state.currentScreen === Screen.LEVEL) renderLevelScreen();
+        if (state.currentScreen === Screen.PROFILE) navigateTo(Screen.PROFILE);
+
+        dom.resetConfirmModal.classList.add('hidden');
+        showToast('Progress has been reset.');
+    });
+    
+    dom.closeReviewModalBtn.addEventListener('click', () => {
+        playSound('click');
+        dom.reviewModal.classList.add('hidden');
+    });
+
+    // --- Navigation ---
     dom.mobileNavItems.forEach(btn => {
         btn.addEventListener('click', () => {
+            playSound('click');
             const targetScreen = btn.dataset.screen;
-            if(targetScreen) navigateTo(targetScreen);
+            if(targetScreen && state.currentScreen !== targetScreen) {
+                navigateTo(targetScreen);
+            }
         });
     });
 
-    // Global click handler for dynamically created buttons
+    dom.logo.addEventListener('click', (e) => {
+        e.preventDefault();
+        playSound('click');
+        if (state.currentScreen !== Screen.HOME) navigateTo(Screen.HOME);
+    });
+
+    // --- Global Click Handler for Dynamic Buttons ---
     document.addEventListener('click', e => {
         const btn = e.target.closest('button');
         if (!btn) return;
@@ -45,7 +78,12 @@ export function initEventListeners(navigateTo) {
                 break;
             case 'retry-challenge-btn':
                 playSound('click');
-                navigateTo(Screen.QUIZ, { isChallenge: true });
+                const challengeTopic = state.topics.find(t => t.isChallenge);
+                if (challengeTopic) {
+                    state.currentTopic = challengeTopic;
+                    state.gameMode = 'timeChallenge';
+                    navigateTo(Screen.QUIZ);
+                }
                 break;
             case 'topics-btn':
             case 'back-to-topics-btn':
@@ -58,12 +96,15 @@ export function initEventListeners(navigateTo) {
                 state.currentLevel = p.highestLevelUnlocked;
                 navigateTo(Screen.QUIZ);
                 break;
+            case 'review-answers-btn':
+                playSound('click');
+                const lastQuiz = getLastQuizData();
+                if (lastQuiz) {
+                    renderReviewModal(lastQuiz);
+                } else {
+                    showToast("No quiz data to review.", true);
+                }
+                break;
         }
-    });
-
-    dom.logo.addEventListener('click', (e) => {
-        e.preventDefault();
-        playSound('click');
-        navigateTo(Screen.HOME);
     });
 }

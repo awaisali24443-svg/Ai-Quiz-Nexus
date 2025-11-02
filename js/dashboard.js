@@ -1,11 +1,10 @@
 
-
 import sceneManager from './3d/sceneManager.js';
-import { state, Screen } from './state.js';
+import { state, Screen, SCORE_TO_UNLOCK_NEXT_LEVEL } from './state.js';
 import { dom } from './dom.js';
-import { loadProgress, recordQuizResult, unlockNextLevel } from './progress.js';
-import { renderHomeScreen, renderLevelScreen, renderResultsScreen } from './ui.js';
-import { showLoading, showToast, playSound, initAudio } from './utils.js';
+import { loadProgress, recordQuizResult, unlockNextLevel, checkAndUnlockAchievements } from './progress.js';
+import { renderHomeScreen, renderLevelScreen, renderResultsScreen, renderProfileScreen } from './ui.js';
+import { showLoading, showToast, initAudio, playSound } from './utils.js';
 import { initEventListeners } from './events.js';
 import { getFallbackQuestions } from './questions-handler.js';
 import { checkAuth, logout } from './auth.js';
@@ -13,8 +12,8 @@ import { checkAuth, logout } from './auth.js';
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
     
-    let prefetchPromise = null;
     let quizControllerModule = null;
+    let lastQuizData = null;
 
     function updateAuthUI(user) {
         const guestBanner = document.getElementById('guest-banner');
@@ -22,21 +21,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const authActionButton = document.getElementById('auth-action-btn');
         const mainContent = document.querySelector('main');
         const header = document.getElementById('app-header');
+        const profileNavBtn = document.querySelector('.nav-item[data-screen="profile-screen"]');
+        const settingsBtn = document.getElementById('settings-btn');
+
 
         if (user.isGuest) {
             guestBanner.classList.remove('hidden');
-            header.style.top = `${guestBanner.offsetHeight}px`;
-            mainContent.style.paddingTop = `${80 + guestBanner.offsetHeight}px`;
+            const bannerHeight = guestBanner.offsetHeight || 50;
+            header.style.top = `${bannerHeight}px`;
+            mainContent.style.paddingTop = `${100 + bannerHeight}px`;
             usernameDisplay.textContent = 'Guest';
             authActionButton.textContent = 'Login';
             authActionButton.onclick = () => { window.location.href = '/login.html'; };
+            if (profileNavBtn) profileNavBtn.classList.add('hidden');
+            if (settingsBtn) settingsBtn.classList.add('hidden'); // Hide settings for guests too
         } else {
             guestBanner.classList.add('hidden');
             header.style.top = '0px';
-            mainContent.style.paddingTop = '80px';
+            mainContent.style.paddingTop = '100px';
             usernameDisplay.textContent = user.username;
             authActionButton.textContent = 'Logout';
             authActionButton.onclick = () => logout();
+            if (profileNavBtn) profileNavBtn.classList.remove('hidden');
+            if (settingsBtn) settingsBtn.classList.remove('hidden');
         }
     }
 
@@ -53,8 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function set3DMode(enabled) {
         state.is3DMode = enabled;
         localStorage.setItem('3dMode', enabled);
-        const toggleBtn = document.querySelector('.theme-toggle-btn[aria-label*="3D"]');
-        if(toggleBtn) toggleBtn.title = enabled ? 'Disable 3D Visuals' : 'Enable 3D Visuals';
+        const toggleBtn = document.getElementById('toggle-3d-btn');
+        if(toggleBtn) {
+            toggleBtn.querySelector('span').textContent = enabled ? '3D Background' : '2D Background';
+            toggleBtn.classList.toggle('active', enabled);
+        }
         updateBackground(state.currentTopic?.id);
     }
 
@@ -63,12 +73,13 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentTopic = topic;
 
         if (topic.isChallenge) {
-            console.log("Time Challenge selected.");
             state.gameMode = 'timeChallenge';
+            state.currentLevel = 1;
             navigateTo(Screen.QUIZ);
         } else {
-            console.log(`Topic selected: ${topic.title}`);
             state.gameMode = 'topic';
+            const progress = state.userProgress.topics[topic.title] || { highestLevelUnlocked: 1 };
+            state.currentLevel = progress.highestLevelUnlocked;
             navigateTo(Screen.LEVEL);
         }
     }
@@ -81,12 +92,19 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Navigating to screen: ${screenId}`);
         state.currentScreen = screenId;
         dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
+        dom.mobileNavItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.screen === screenId);
+        });
         
         updateBackground(screenId === Screen.LEVEL || screenId === Screen.QUIZ ? state.currentTopic?.id : null);
         
         switch (screenId) {
             case Screen.HOME: 
                 renderHomeScreen(handleTopicSelection); 
+                break;
+            case Screen.PROFILE:
+                if (state.user.isGuest) { navigateTo(Screen.HOME); break; }
+                renderProfileScreen();
                 break;
             case Screen.LEVEL: 
                 renderLevelScreen(); 
@@ -99,56 +117,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 const progress = state.userProgress.topics[state.currentTopic?.title] || { history: [] };
                 const answeredQuestions = (progress.history || []).flatMap(h => h.questions.map(q => q.q));
                 
-                const utilsForQuiz = { playSound, showLoading, showToast, getFallbackQuestions };
-                const quizResult = await quizControllerModule.runQuiz(prefetchPromise, state, dom, utilsForQuiz, answeredQuestions);
-                prefetchPromise = null;
+                const utilsForQuiz = { showLoading, showToast, getFallbackQuestions, playSound };
+                const quizResult = await quizControllerModule.runQuiz(null, state, dom, utilsForQuiz, answeredQuestions);
                 
                 if (quizResult.error) {
-                    navigateTo(Screen.LEVEL);
+                    navigateTo(state.gameMode === 'topic' ? Screen.LEVEL : Screen.HOME);
                 } else {
+                    lastQuizData = quizResult.questions;
                     if (state.gameMode === 'topic') {
                         await recordQuizResult(state.currentTopic.title, state.currentLevel, quizResult.score, quizResult.questions);
-                        if (quizResult.score >= 7) { // SCORE_TO_UNLOCK_NEXT_LEVEL
+                        if (quizResult.score >= SCORE_TO_UNLOCK_NEXT_LEVEL) {
                             await unlockNextLevel(state.currentTopic.title, state.currentLevel);
                         }
+                    } else {
+                        await recordQuizResult('Time Challenge', 1, quizResult.score, quizResult.questions);
                     }
+                    
+                    if (!state.user.isGuest) {
+                        const newAchievements = await checkAndUnlockAchievements(quizResult.score, state.currentTopic?.title, state.currentLevel, state.gameMode);
+                        newAchievements.forEach(ach => showToast(`🏆 Achievement Unlocked: ${ach.name}`));
+                    }
+                    
                     navigateTo(Screen.RESULTS, quizResult);
                 }
                 break;
-            case Screen.RESULTS: 
-                renderResultsScreen(data); 
+            case Screen.RESULTS:
+                renderResultsScreen(data, lastQuizData);
                 break;
         }
     }
 
     async function init() {
-        console.log("Initializing dashboard...");
-        
+        console.log("Initializing Dashboard...");
         state.user = checkAuth();
-        updateAuthUI(state.user);
-
-        initAudio();
-        
-        const toggle3dBtn = document.querySelector('.theme-toggle-btn[aria-label*="3D"]');
-        if (toggle3dBtn) {
-            if (!sceneManager.isWebGLAvailable()) {
-                toggle3dBtn.disabled = true;
-                toggle3dBtn.classList.add('disabled');
-                state.is3DMode = false;
-            } else {
-                const saved3dMode = localStorage.getItem('3dMode');
-                set3DMode(saved3dMode !== 'false');
-                toggle3dBtn.addEventListener('click', () => set3DMode(!state.is3DMode));
-            }
-        }
         
         await loadProgress();
+        updateAuthUI(state.user);
         
-        initEventListeners(navigateTo);
-
-        setInterval(() => { fetch('/api/ping').catch(() => {}); }, 4 * 60 * 1000);
-
         navigateTo(Screen.HOME);
+        
+        const is3DEnabled = localStorage.getItem('3dMode') !== 'false';
+        set3DMode(is3DEnabled);
+        
+        initEventListeners(navigateTo, set3DMode, () => lastQuizData);
+        initAudio();
     }
 
     init();

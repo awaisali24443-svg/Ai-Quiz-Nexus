@@ -1,5 +1,4 @@
 
-
 // This module is dynamically imported by dashboard.js only when a quiz starts.
 
 let quizState = {};
@@ -18,18 +17,18 @@ function resetQuizState() {
         score: 0,
         answerSubmitted: false,
         timedOut: false,
-        isComplete: false, // Flag to prevent double completion events
+        isComplete: false,
     };
 }
 
 function stopTimer() {
-    clearInterval(timerIntervalId);
+    if (timerIntervalId) clearInterval(timerIntervalId);
     timerIntervalId = null;
 }
 
 function startTimer(duration, onTimeout) {
     let timer = duration;
-    if (timerIntervalId) stopTimer();
+    stopTimer();
 
     timerIntervalId = setInterval(() => {
         const minutes = String(Math.floor(timer / 60)).padStart(2, '0');
@@ -39,7 +38,7 @@ function startTimer(duration, onTimeout) {
         dom.quizTimer.classList.toggle('low-time', timer <= 30);
 
         if (--timer < 0) {
-            if (quizState.isComplete) return; // Prevent firing if already completed
+            if (quizState.isComplete) return;
             utils.playSound('incorrect');
             quizState.timedOut = true;
             quizState.isComplete = true;
@@ -67,8 +66,6 @@ function renderQuizQuestion() {
         dom.optionsContainer.appendChild(btn);
     });
 
-    dom.quizHintBtn.classList.add('hidden'); // Hints are disabled in local mode
-
     const quizBody = document.querySelector('.quiz-body');
     gsap.fromTo(quizBody, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
     gsap.fromTo('.option-btn', 
@@ -92,6 +89,8 @@ function handleAnswerSelection(selectedButton) {
     const question = quizState.questions[quizState.currentQuestionIndex];
     const isCorrect = selectedAnswer === question.answer;
 
+    question.yourAnswer = selectedAnswer; // Store user's answer for review
+
     utils.playSound(isCorrect ? 'correct' : 'incorrect');
     
     if (isCorrect) {
@@ -113,28 +112,20 @@ function handleAnswerSelection(selectedButton) {
 }
 
 function handleNextQuestion() {
+    if (quizState.isComplete) return;
+
     if (quizState.currentQuestionIndex < quizState.questions.length - 1) {
         quizState.currentQuestionIndex++;
         quizState.answerSubmitted = false;
         renderQuizQuestion();
     } else {
-        if (quizState.isComplete) return; // Prevent double completion
         quizState.isComplete = true;
         stopTimer();
         window.dispatchEvent(new CustomEvent('quizComplete', { detail: quizState }));
     }
 }
 
-async function getQuizQuestions(prefetchPromise, answeredQuestions) {
-    // 1. Try to use prefetched AI quiz data first
-    if (prefetchPromise) {
-        utils.showToast("⚡ Prefetched AI quiz loaded!");
-        const data = await prefetchPromise;
-        if (!data.questions || data.questions.length === 0) throw new Error("Prefetched data was invalid.");
-        return data.questions;
-    }
-
-    // 2. Fallback to live AI generation (if online)
+async function getQuizQuestions(answeredQuestions) {
     if (navigator.onLine) {
          try {
             const endpoint = appState.gameMode === 'topic' ? '/api/generate-quiz' : '/api/generate-time-challenge';
@@ -152,11 +143,9 @@ async function getQuizQuestions(prefetchPromise, answeredQuestions) {
             return data.questions;
         } catch (error) {
             utils.showToast(`AI generation failed: ${error.message}. Using offline questions.`, true);
-            // Fall through to offline questions
         }
     }
     
-    // 3. Fallback to local questions (if offline or AI fails)
     if (appState.gameMode === 'timeChallenge') {
         throw new Error('Time Challenge requires an internet connection.');
     }
@@ -178,7 +167,7 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
             resolve({ 
                 score: e.detail.score, 
                 timedOut: e.detail.timedOut,
-                questions: e.detail.questions // Pass back the questions for history
+                questions: e.detail.questions
             });
             window.removeEventListener('quizComplete', onQuizComplete);
         };
@@ -189,7 +178,7 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
         utils.showLoading(true, "Crafting your challenge...");
 
         try {
-            const questions = await getQuizQuestions(prefetchPromise, answeredQuestions);
+            const questions = await getQuizQuestions(answeredQuestions);
             quizState.questions = questions.sort(() => 0.5 - Math.random()).slice(0, QUESTIONS_PER_QUIZ);
             
             if (appState.gameMode === 'timeChallenge') {

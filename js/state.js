@@ -4,6 +4,7 @@ export const SCORE_TO_UNLOCK_NEXT_LEVEL = 7;
 
 export const Screen = {
     HOME: 'home-screen',
+    PROFILE: 'profile-screen',
     LEVEL: 'level-screen',
     QUIZ: 'quiz-screen',
     RESULTS: 'results-screen',
@@ -19,7 +20,7 @@ export const TOPICS = [
     { id: 'mathematics_logic', title: 'Mathematics & Logic', description: 'Challenge your logical reasoning with problems in mathematics and abstract thinking.' },
     { id: 'world_knowledge', title: 'World Knowledge', description: 'Test your general knowledge about global geography, cultures, and current events.' },
     { id: 'islamic_knowledge', title: 'Islamic Knowledge', description: 'Deepen your understanding of Islamic history, principles, and traditions.' },
-    { id: 'space_astronomy', title: 'Time Challenge', description: 'A fast-paced quiz with random questions from all topics. How high can you score?', isChallenge: true },
+    { id: 'time_challenge', title: 'Time Challenge', description: 'A fast-paced quiz with random questions from all topics. How high can you score?', isChallenge: true },
 ];
 
 export const state = {
@@ -28,6 +29,6 @@ export const state = {
     currentScreen: Screen.HOME,
     currentTopic: null,
     currentLevel: 1,
-    userProgress: { topics: {} },
-    gameMode: 'topic',
+    userProgress: { topics: {}, stats: { totalQuizzes: 0 }, achievements: {} },
+    gameMode: 'topic', // 'topic' or 'timeChallenge'
 };
