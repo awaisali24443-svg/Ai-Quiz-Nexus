@@ -2,11 +2,12 @@
 import sceneManager from './3d/sceneManager.js';
 import { state, Screen } from './state.js';
 import { dom } from './dom.js';
-import { loadOrCreateLocalSession, loadProgress, recordQuizResult, unlockNextLevel } from './progress.js';
+import { loadProgress, recordQuizResult, unlockNextLevel } from './progress.js';
 import { renderHomeScreen, renderLevelScreen, renderResultsScreen } from './ui.js';
 import { showLoading, showToast, playSound, initAudio } from './utils.js';
 import { initEventListeners } from './events.js';
 import { getFallbackQuestions } from './questions-handler.js';
+import { checkAuth } from './auth.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
@@ -97,6 +98,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function init() {
         console.log("Initializing dashboard...");
+        
+        const user = checkAuth();
+        if (!user) return; // Stop execution if redirected to login
+        state.user = user;
+
         initAudio();
         
         const toggle3dBtn = document.querySelector('.theme-toggle-btn[aria-label*="3D"]');
@@ -112,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        loadOrCreateLocalSession();
         await loadProgress();
         
         initEventListeners(navigateTo);

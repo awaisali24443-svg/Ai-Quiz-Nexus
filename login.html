@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Knowledge Tester</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="animated-bg-container">
+        <div class="bg-layer grid-bg" style="opacity: 0.15;"></div>
+        <div class="bg-layer starfield" style="opacity: 1;"></div>
+    </div>
+
+    <main class="auth-page">
+        <div class="auth-container">
+            <h1 class="auth-title">Login</h1>
+            <p id="error-message">&nbsp;</p>
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+            <p class="auth-switch-link">
+                Don't have an account? <a href="/signup.html">Sign Up</a>
+            </p>
+        </div>
+    </main>
+    
+    <script type="module" src="js/login.js" defer></script>
+</body>
+</html>

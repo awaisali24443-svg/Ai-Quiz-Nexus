@@ -3,6 +3,7 @@ import { dom } from './dom.js';
 import { state, Screen } from './state.js';
 import { saveProgress } from './progress.js';
 import { showToast, playSound } from './utils.js';
+import { logout } from './auth.js';
 
 export function initEventListeners(navigateTo) {
     dom.resetProgressBtn.addEventListener('click', () => {
@@ -17,6 +18,11 @@ export function initEventListeners(navigateTo) {
 
             showToast('Progress has been reset.');
         }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        playSound('click');
+        logout();
     });
 
     dom.mobileNavItems.forEach(btn => {

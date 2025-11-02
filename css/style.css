@@ -1,4 +1,5 @@
 
+
 :root {
     --bg-dark: #0a0a1f;
     --primary: #00eaff; /* Neon Cyan */
@@ -257,6 +258,82 @@ body.light-mode .section-title { border-bottom-color: #dee2e6; }
 
 body.light-mode .welcome-title { text-shadow: none; }
 
+/* Auth Pages (Login/Signup) */
+.auth-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+.auth-container {
+    width: 100%;
+    max-width: 420px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+    backdrop-filter: blur(10px);
+    animation: fadeIn 0.5s ease-out;
+}
+.auth-title {
+    font-family: var(--font-title);
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 2rem;
+    color: var(--primary);
+    text-shadow: 0 0 8px var(--primary);
+}
+.auth-form .form-group {
+    margin-bottom: 1.5rem;
+}
+.auth-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-medium);
+}
+.auth-form input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background-color: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-light);
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+.auth-form input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(0, 234, 255, 0.5);
+}
+.auth-form .btn {
+    width: 100%;
+    margin-top: 1rem;
+}
+.auth-switch-link {
+    text-align: center;
+    margin-top: 1.5rem;
+    color: var(--text-medium);
+}
+.auth-switch-link a {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: text-shadow 0.3s;
+}
+.auth-switch-link a:hover {
+    text-decoration: underline;
+    text-shadow: 0 0 5px var(--primary);
+}
+#error-message {
+    color: #ff4d4d;
+    text-align: center;
+    margin-bottom: 1rem;
+    min-height: 1.2em;
+}
+
 /* Home Screen (Topic Grid) */
 .topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
 .topic-card {
@@ -394,3 +471,5 @@ body.light-mode #loading-overlay { background: rgba(255, 255, 255, 0.8); }
 
 body.light-mode .theme-toggle-btn:hover { background-color: rgba(0, 0, 0, 0.1); }
 #reset-progress-btn { text-transform: none; font-size: 0.9rem; padding: 0.5rem 1rem;}
+#logout-btn { text-transform: none; font-size: 0.9rem; padding: 0.5rem 1rem;}
+#user-greeting { color: var(--text-medium); margin-right: 0.5rem; }

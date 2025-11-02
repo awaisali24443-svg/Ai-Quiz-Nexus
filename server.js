@@ -2,6 +2,10 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+import bcrypt from 'bcryptjs';
+import fs from 'fs/promises';
+import { constants as fs_constants } from 'fs';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,10 +13,77 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
+// --- User Data Persistence ---
+const USERS_FILE = path.join(__dirname, 'css', 'data', 'users.json');
+let users = [];
+
+async function readUsers() {
+    try {
+        await fs.access(USERS_FILE, fs_constants.F_OK);
+        const data = await fs.readFile(USERS_FILE, 'utf-8');
+        if (data) {
+            users = JSON.parse(data);
+        } else {
+            users = [];
+        }
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            await fs.writeFile(USERS_FILE, '[]', 'utf-8');
+            users = [];
+        } else {
+            console.error('Error reading users file:', error);
+            users = [];
+        }
+    }
+}
+
+async function writeUsers() {
+    try {
+        await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+    } catch (error) {
+        console.error('Error writing to users file:', error);
+    }
+}
+
+// Initialize users from file
+readUsers();
+
 // Serve static files first. This will serve index.html for the root, and other .html files.
 app.use(express.static(path.join(__dirname)));
 // Use express.json middleware for parsing JSON bodies
 app.use(express.json());
+
+
+// --- API Routes for Authentication ---
+
+app.post('/api/auth/register', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required.' });
+    }
+    if (users.find(u => u.username === username)) {
+        return res.status(409).json({ message: 'Username already exists.' });
+    }
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const newUser = {
+        id: `user-${Date.now()}`,
+        username,
+        password: hashedPassword
+    };
+    users.push(newUser);
+    await writeUsers();
+    res.status(201).json({ message: 'User registered successfully.' });
+});
+
+app.post('/api/auth/login', (req, res) => {
+    const { username, password } = req.body;
+    const user = users.find(u => u.username === username);
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+        return res.status(401).json({ message: 'Invalid username or password.' });
+    }
+    const { password: _, ...userWithoutPassword } = user;
+    res.status(200).json({ message: 'Login successful.', user: userWithoutPassword });
+});
 
 
 // --- API Routes for AI Quiz Generation ---

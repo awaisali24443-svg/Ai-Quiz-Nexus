@@ -5,25 +5,11 @@ function getStorageKey() {
     return `aiQuizProgress_${state.user.id}`;
 }
 
-export function loadOrCreateLocalSession() {
-    let userJSON = localStorage.getItem('aiQuizLocalUser');
-    if (userJSON) {
-        state.user = JSON.parse(userJSON);
-    } else {
-        state.user = {
-            id: `local-user-${Date.now()}`,
-            username: 'Player'
-        };
-        localStorage.setItem('aiQuizLocalUser', JSON.stringify(state.user));
-    }
-    console.log("Running in Local Mode for user:", state.user.id);
-}
-
 export async function saveProgress() {
     const storageKey = getStorageKey();
     if (!storageKey) return;
     
-    console.log(`Saving progress for local user...`);
+    console.log(`Saving progress for user ${state.user.id}...`);
     localStorage.setItem(storageKey, JSON.stringify(state.userProgress));
 }
 
@@ -38,9 +24,9 @@ export async function loadProgress() {
     if (saved) {
         try {
             state.userProgress = JSON.parse(saved);
-            console.log('Local progress loaded from localStorage.');
+            console.log('User progress loaded from localStorage.');
         } catch (e) {
-            console.error("Could not parse local progress", e);
+            console.error("Could not parse user progress", e);
             state.userProgress = { topics: {} };
         }
     } else {
