@@ -1,4 +1,5 @@
 
+
 :root {
     --font-body: 'Inter', sans-serif;
     --font-title: 'Orbitron', sans-serif;
@@ -338,8 +339,8 @@ body.mode-3d #animated-bg-container {
     justify-content: center;
     transition: color 0.3s, background-color 0.3s;
 }
-.icon-btn:hover { color: var(--text-light); background-color: var(--card-bg); }
-.icon-btn.disabled { opacity: 0.5; cursor: not-allowed; background-color: transparent !important; color: var(--text-medium) !important; }
+.icon-btn:hover:not(:disabled) { color: var(--text-light); background-color: var(--card-bg); }
+.icon-btn:disabled { opacity: 0.5; cursor: not-allowed; background-color: transparent !important; color: var(--text-medium) !important; }
 [data-theme="light"] .icon-btn:hover { background-color: rgba(0, 0, 0, 0.05); }
 
 
@@ -535,6 +536,7 @@ main {
 /* Quiz Screen */
 .quiz-container { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; backdrop-filter: blur(8px); width: 100%; max-width: 800px; margin: auto; }
 .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem;}
+#hint-btn:not(:disabled):hover { color: var(--accent-yellow); box-shadow: 0 0 15px var(--accent-yellow); }
 #question-text { font-size: clamp(1.2rem, 4vw, 1.5rem); text-align: center; margin: 2rem 0; min-height: 70px; }
 .options-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
 .option-btn { width: 100%; padding: 1rem; text-align: left; background: rgba(0,0,0,0.2); border: 2px solid var(--border-color); color: var(--text-light); border-radius: 8px; cursor: pointer; transition: all 0.3s; font-size: 1rem; }

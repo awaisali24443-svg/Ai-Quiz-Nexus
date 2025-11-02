@@ -49,6 +49,7 @@ export function initializeDom() {
         quizProgressBar: document.getElementById('quiz-progress-bar'),
         questionText: document.getElementById('question-text'),
         optionsContainer: document.getElementById('options-container'),
+        hintBtn: document.getElementById('hint-btn'),
 
         // Results Screen
         finalScoreValue: document.getElementById('final-score-value'),

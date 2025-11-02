@@ -259,6 +259,37 @@ app.post('/api/generate-time-challenge', async (req, res) => {
     }
 });
 
+app.post('/api/generate-hint', async (req, res) => {
+    if (!process.env.API_KEY) {
+        return res.status(503).json({ message: 'AI service is not configured.' });
+    }
+    const { question, options } = req.body;
+    if (!question || !options) {
+        return res.status(400).json({ message: 'Question and options are required.' });
+    }
+
+    let ai;
+    try {
+        ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    } catch (e) {
+        return res.status(503).json({ message: 'AI service could not be initialized.' });
+    }
+    
+    const prompt = `Provide a subtle, one-sentence hint for the following multiple-choice question. The hint should guide the user toward the correct answer without giving it away directly. Do not mention the correct answer in the hint. Question: "${question}" Options: ${options.join(', ')}`;
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        const hint = response.text.trim();
+        res.status(200).json({ hint });
+    } catch (error) {
+        console.error('Error generating hint with Gemini:', error);
+        res.status(500).json({ message: 'Failed to generate a hint.' });
+    }
+});
+
 app.get('/api/ping', (req, res) => {
     res.status(200).json({ message: 'pong' });
 });

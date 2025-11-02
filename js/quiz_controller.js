@@ -8,6 +8,7 @@ let utils = {};
 let timerIntervalId = null;
 let loadingIntervalId = null;
 let quizPromiseResolve = null;
+let hintButtonHandler = null;
 
 const QUESTIONS_PER_QUIZ = 10;
 const TIME_CHALLENGE_DURATION = 150; // 2 minutes 30 seconds
@@ -107,6 +108,9 @@ function renderQuizQuestion() {
     dom.quizProgressBar.style.width = `${((currentQuestionIndex + 1) / questions.length) * 100}%`;
     dom.questionText.textContent = question.q;
 
+    // Enable hint button for the new question if online
+    dom.hintBtn.disabled = !navigator.onLine;
+
     dom.optionsContainer.innerHTML = '';
     const shuffledOptions = [...question.options].sort(() => Math.random() - 0.5);
     shuffledOptions.forEach(optionText => {
@@ -127,12 +131,48 @@ function renderQuizQuestion() {
 }
 
 /**
+ * Handles the user's request for a hint.
+ */
+async function handleHintRequest() {
+    dom.hintBtn.disabled = true; // Disable after one use
+    utils.playSound('click');
+    utils.showToast("The AI is thinking of a hint...");
+
+    const question = localState.questions[localState.currentQuestionIndex];
+    
+    try {
+        const response = await fetch('/api/generate-hint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question: question.q,
+                options: question.options
+            }),
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'The AI could not provide a hint.');
+        }
+
+        const data = await response.json();
+        utils.showToast(`💡 ${data.hint}`);
+
+    } catch (error) {
+        utils.showToast(`Error: ${error.message}`, true);
+        dom.hintBtn.disabled = false; // Re-enable if hint failed
+    }
+}
+
+
+/**
  * Handles the user's selection of an answer.
  * @param {HTMLButtonElement} selectedButton - The button that was clicked.
  */
 function handleAnswerSelection(selectedButton) {
     if (localState.answerSubmitted) return;
     localState.answerSubmitted = true;
+    dom.hintBtn.disabled = true; // Disable hint button once an answer is submitted
 
     const selectedAnswer = selectedButton.textContent;
     const question = localState.questions[localState.currentQuestionIndex];
@@ -186,6 +226,7 @@ function completeQuiz(options = {}) {
     if (localState.isComplete) return;
     localState.isComplete = true;
     stopTimer();
+    dom.hintBtn.disabled = true;
 
     if (quizPromiseResolve) {
         quizPromiseResolve({
@@ -236,6 +277,10 @@ async function getQuizQuestions(answeredQuestions) {
 export function cleanupQuiz() {
     stopTimer();
     stopLoadingAnimation();
+    if (dom.hintBtn && hintButtonHandler) {
+        dom.hintBtn.removeEventListener('click', hintButtonHandler);
+        hintButtonHandler = null;
+    }
     if (quizPromiseResolve) {
         // If a quiz is in progress and we navigate away, resolve with an error state
         quizPromiseResolve({ error: true, message: "Quiz aborted" });
@@ -258,6 +303,11 @@ export function runQuiz(initialAppState, domElements, sharedUtils, answeredQuest
         dom.quizProgressBar.style.width = '0%';
         utils.showLoading(true);
         startLoadingAnimation();
+        
+        // Setup hint button listener
+        hintButtonHandler = () => handleHintRequest();
+        dom.hintBtn.addEventListener('click', hintButtonHandler);
+        dom.hintBtn.disabled = true;
 
         try {
             const questions = await getQuizQuestions(answeredQuestions);
