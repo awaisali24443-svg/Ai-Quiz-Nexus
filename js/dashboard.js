@@ -44,9 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function updateBackground(topicId = null) {
+        const sceneToLoad = (topicId === 'default' || !topicId) ? 'world_knowledge' : topicId;
         if (state.is3DMode && sceneManager.isWebGLAvailable()) {
             document.body.classList.add('mode-3d');
-            await sceneManager.init(topicId || 'world_knowledge', dom.webGLContainer);
+            await sceneManager.init(sceneToLoad, dom.webGLContainer);
         } else {
             document.body.classList.remove('mode-3d');
             sceneManager.destroy();
@@ -147,27 +148,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function init() {
-        console.log("Initializing Dashboard...");
-        state.user = checkAuth();
-        
-        await loadProgress();
-        updateAuthUI(state.user);
-        
-        navigateTo(Screen.HOME);
-        
-        const is3DEnabled = localStorage.getItem('3dMode') !== 'false';
-        set3DMode(is3DEnabled);
-        
-        initEventListeners(navigateTo, set3DMode, () => lastQuizData);
-        initAudio();
+        try {
+            console.log("Initializing Dashboard...");
+            state.user = checkAuth();
+            
+            await loadProgress();
+            updateAuthUI(state.user);
+            
+            await navigateTo(Screen.HOME);
+            
+            const is3DEnabled = localStorage.getItem('3dMode') !== 'false';
+            set3DMode(is3DEnabled);
+            
+            initEventListeners(navigateTo, set3DMode, () => lastQuizData);
+            initAudio();
 
-        window.addEventListener('offline', () => dom.offlineBanner.classList.remove('hidden'));
-        window.addEventListener('online', () => dom.offlineBanner.classList.add('hidden'));
-        if (!navigator.onLine) dom.offlineBanner.classList.remove('hidden');
+            window.addEventListener('offline', () => dom.offlineBanner.classList.remove('hidden'));
+            window.addEventListener('online', () => dom.offlineBanner.classList.add('hidden'));
+            if (!navigator.onLine) dom.offlineBanner.classList.add('hidden');
         
-        // Prevent layout shift by showing main content only after setup
-        dom.mainContent.style.visibility = 'visible';
-        dom.mainContent.style.opacity = '1';
+        } catch (error) {
+            console.error("Critical error during dashboard initialization:", error);
+            // Show a graceful error message to the user instead of a blank screen.
+            document.body.innerHTML = `<div style="position: fixed; inset: 0; color: white; background-color: #0a0a1f; padding: 40px; text-align: center; z-index: 9999;"><h1>An Unexpected Error Occurred</h1><p>The quiz dashboard could not be loaded. Please try refreshing the page.</p><p style="color: #666; font-size: 14px; margin-top: 20px;">Error: ${error.message}</p></div>`;
+        } finally {
+            // This ensures the main content becomes visible. If a critical error was caught,
+            // the body will be replaced, so we check if dom.mainContent still exists.
+            if (dom.mainContent) {
+                dom.mainContent.style.visibility = 'visible';
+                dom.mainContent.style.opacity = '1';
+            }
+        }
     }
 
     init();
