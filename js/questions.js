@@ -160,7 +160,7 @@ export const QUIZ_DATA = {
             { q: "What is the difference between mitosis and meiosis?", options: ["Mitosis produces identical cells, meiosis produces sex cells with half the chromosomes", "Meiosis is for growth, mitosis is for reproduction", "Mitosis occurs in plants, meiosis in animals", "They are the same process with different names"], answer: "Mitosis produces identical cells, meiosis produces sex cells with half the chromosomes" },
             { q: "What is a 'phenotype'?", options: ["The genetic makeup of an organism", "The observable physical properties of an organism", "A section of DNA", "A type of cell organelle"], answer: "The observable physical properties of an organism" },
             { q: "What is the function of the xylem in plants?", options: ["To transport sugars from the leaves", "To transport water and minerals from the roots to the rest of the plant", "Photosynthesis", "Reproduction"], answer: "To transport water and minerals from the roots to the rest of the plant" },
-            { q: "What is the role of the nervous system?", options: ["To transport oxygen", "To break down food", "To transmit nerve impulses between parts of the body", "To produce hormones"], answer: "To transmit nerve impulses between parts of thebody" },
+            { q: "What is the role of the nervous system?", options: ["To transport oxygen", "To break down food", "To transmit nerve impulses between parts of the body", "To produce hormones"], answer: "To transmit nerve impulses between parts of the body" },
             { q: "What is a virus?", options: ["A single-celled organism", "A type of bacteria", "An infectious agent that replicates only inside the living cells of other organisms", "A cellular organelle"], answer: "An infectious agent that replicates only inside the living cells of other organisms" },
             { q: "What is natural selection?", options: ["The process where humans choose desirable traits in animals", "The process whereby organisms better adapted to their environment tend to survive and produce more offspring", "A random process of evolution", "The creation of new species in a lab"], answer: "The process whereby organisms better adapted to their environment tend to survive and produce more offspring" },
             { q: "What is the primary function of the kidneys?", options: ["To pump blood", "To digest proteins", "To filter waste products from the blood and produce urine", "To produce insulin"], answer: "To filter waste products from the blood and produce urine" },
@@ -182,4 +182,104 @@ export const QUIZ_DATA = {
             { q: "What is the function of RNA interference (RNAi)?", options: ["It helps build proteins", "A biological process in which RNA molecules inhibit gene expression or translation, by neutralizing targeted mRNA molecules", "It repairs damaged DNA", "It is a form of energy storage"], answer: "A biological process in which RNA molecules inhibit gene expression or translation, by neutralizing targeted mRNA molecules" },
             { q: "What are prions?", options: ["A type of virus", "Misfolded proteins that can transmit their misfolded shape onto normal variants of the same protein, leading to neurodegenerative diseases", "A beneficial type of gut bacteria", "A component of the cell membrane"], answer: "Misfolded proteins that can transmit their misfolded shape onto normal variants of the same protein, leading to neurodegenerative diseases" },
             { q: "What is the significance of the lac operon in E. coli?", options: ["It's a model for understanding gene regulation, showing how genes can be turned on and off in response to the environment", "It is the primary source of energy for the bacteria", "It makes the bacteria resistant to antibiotics", "It is involved in cellular movement"], answer: "It's a model for understanding gene regulation, showing how genes can be turned on and off in response to the environment" },
-            { q: "What is chemiosmosis?", options: ["The movement of ions across a semipermeable membrane down their electrochemical gradient, used to generate ATP", "A type of chemical reaction", "The process of cells communicating with each other", "A form of passive transport"], answer: "The movement of ions across a semiperme...
+            { q: "What is chemiosmosis?", options: ["The movement of ions across a semipermeable membrane down their electrochemical gradient, used to generate ATP", "A type of chemical reaction", "The process of cells communicating with each other", "A form of passive transport"], answer: "The movement of ions across a semiperme...--- START OF FILE js/3d/sceneManager.js ---
+
+
+// Caches the loaded modules to avoid re-fetching
+const sceneModulesCache = new Map();
+
+let currentSceneModule = null;
+let currentContainer = null;
+
+const sceneManager = {
+    async init(topicId, container) {
+        // If the same scene is already running, do nothing
+        if (currentSceneModule && currentSceneModule.topicId === topicId) {
+            return;
+        }
+
+        // Clean up the previous scene before starting a new one
+        if (currentSceneModule) {
+            this.destroy();
+        }
+
+        currentContainer = container;
+        currentContainer.classList.add('visible');
+
+        try {
+            let module;
+            if (sceneModulesCache.has(topicId)) {
+                module = sceneModulesCache.get(topicId);
+            } else {
+                // Dynamically import the module for the selected topic
+                module = await import(`./${topicId}.js`);
+                sceneModulesCache.set(topicId, module);
+            }
+            
+            // Store a reference to the active module
+            currentSceneModule = {
+                ...module,
+                topicId: topicId
+            };
+
+            // Initialize the 3D scene
+            currentSceneModule.init3DScene(container);
+
+            // Add event listeners for interaction
+            window.addEventListener('resize', this.handleResize);
+            window.addEventListener('mousemove', this.handleMouseMove);
+
+        } catch (error) {
+            console.error(`Failed to load or init 3D module for topic: ${topicId}`, error);
+            // Fallback: hide the WebGL container if the scene fails to load
+            if (currentContainer) {
+                currentContainer.classList.remove('visible');
+            }
+        }
+    },
+
+    destroy() {
+        if (currentSceneModule && typeof currentSceneModule.destroy3DScene === 'function') {
+            currentSceneModule.destroy3DScene();
+        }
+        
+        // Clean up event listeners
+        window.removeEventListener('resize', this.handleResize);
+        window.removeEventListener('mousemove', this.handleMouseMove);
+
+        if (currentContainer) {
+            currentContainer.classList.remove('visible');
+            // Clear the container's content to ensure the renderer's canvas is removed
+            while (currentContainer.firstChild) {
+                currentContainer.removeChild(currentContainer.firstChild);
+            }
+        }
+        
+        currentSceneModule = null;
+        currentContainer = null;
+    },
+
+    handleResize() {
+        if (currentSceneModule && typeof currentSceneModule.onWindowResize === 'function') {
+            currentSceneModule.onWindowResize();
+        }
+    },
+
+    handleMouseMove(event) {
+        if (currentSceneModule && typeof currentSceneModule.onMouseMove === 'function') {
+            currentSceneModule.onMouseMove(event);
+        }
+    },
+
+    // Utility to check for WebGL support
+    isWebGLAvailable() {
+        try {
+            const canvas = document.createElement('canvas');
+            return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+        } catch (e) {
+            return false;
+        }
+    }
+};
+
+export default sceneManager;

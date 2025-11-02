@@ -22,6 +22,10 @@ export function initializeDom() {
         settingsMenu: document.querySelector('.settings-menu'),
         toggle3DBtn: document.getElementById('toggle-3d-btn'),
         resetProgressBtn: document.getElementById('reset-progress-btn'),
+        usernameDisplay: document.getElementById('username-display'),
+        authActionBtn: document.getElementById('auth-action-btn'),
+        settingsContainer: document.querySelector('.settings-container'),
+
 
         // Home Screen
         timeChallengeContainer: document.getElementById('time-challenge-container'),
