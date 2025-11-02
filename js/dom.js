@@ -1,4 +1,3 @@
-
 export const dom = {
     appContainer: document.getElementById('app-container'),
     screens: document.querySelectorAll('.screen'),
@@ -9,6 +8,9 @@ export const dom = {
     webGLContainer: document.getElementById('webgl-container'),
     logo: document.querySelector('.logo'),
     mobileNavItems: document.querySelectorAll('.mobile-nav .nav-item'),
+    appHeader: document.getElementById('app-header'),
+    guestBanner: document.getElementById('guest-banner'),
+    offlineBanner: document.getElementById('offline-banner'),
     
     // Header & Settings
     settingsBtn: document.getElementById('settings-btn'),
@@ -35,12 +37,10 @@ export const dom = {
     currentLevelText: document.getElementById('current-level-text'),
     startCurrentLevelBtn: document.getElementById('start-current-level-btn'),
     backToTopicsBtn: document.getElementById('back-to-topics-btn'),
-    historyLog: document.getElementById('history-log'),
 
     // Quiz Screen
     quizTimer: document.getElementById('quiz-timer'),
     questionCounter: document.getElementById('question-counter'),
-    quizHintBtn: document.getElementById('hint-btn'),
     quizProgressBar: document.getElementById('quiz-progress-bar'),
     questionText: document.getElementById('question-text'),
     optionsContainer: document.getElementById('options-container'),

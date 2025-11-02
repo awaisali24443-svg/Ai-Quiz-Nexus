@@ -1,4 +1,3 @@
-
 import { dom } from './dom.js';
 
 let audioCtx;
@@ -11,15 +10,20 @@ export function initAudio() {
     }, { once: true });
 }
 
-export function showToast(message, isError = false) {
+export function showToast(message, isError = false, isAchievement = false) {
     const toast = document.createElement('div');
-    toast.className = `toast ${isError ? 'error' : ''}`;
+    let classes = 'toast';
+    if (isError) classes += ' error';
+    if (isAchievement) classes += ' achievement';
+    
+    toast.className = classes;
     toast.textContent = message;
     dom.toastContainer.appendChild(toast);
+    
     setTimeout(() => {
         toast.classList.add('hiding');
         toast.addEventListener('transitionend', () => toast.remove());
-    }, 3000);
+    }, 4000);
 }
 
 export function showLoading(show, text = 'Loading...') {
@@ -29,7 +33,8 @@ export function showLoading(show, text = 'Loading...') {
 
 export function playSound(type) {
     if (!audioCtx || audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        if(audioCtx) audioCtx.resume();
+        else return;
     }
     if (!audioCtx) return;
 
@@ -53,7 +58,7 @@ export function playSound(type) {
         case 'click':
         default:
             oscillator.type = 'triangle';
-            oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+            oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
             break;
     }

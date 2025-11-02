@@ -1,9 +1,8 @@
-
 import { dom } from './dom.js';
 import { state, Screen } from './state.js';
-import { loadProgress, saveProgress } from './progress.js';
+import { loadProgress } from './progress.js';
 import { showToast, playSound } from './utils.js';
-import { renderHomeScreen, renderLevelScreen, renderReviewModal } from './ui.js';
+import { renderHomeScreen, renderLevelScreen, renderReviewModal, renderProfileScreen } from './ui.js';
 
 export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
 
@@ -31,8 +30,8 @@ export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
         await loadProgress();
         
         // Re-render the current screen to reflect the change
-        if (state.currentScreen === Screen.HOME) renderHomeScreen((topic) => navigateTo(Screen.LEVEL, { topic }));
-        if (state.currentScreen === Screen.LEVEL) renderLevelScreen();
+        if (state.currentScreen === Screen.HOME) navigateTo(Screen.HOME);
+        if (state.currentScreen === Screen.LEVEL) navigateTo(Screen.LEVEL);
         if (state.currentScreen === Screen.PROFILE) navigateTo(Screen.PROFILE);
 
         dom.resetConfirmModal.classList.add('hidden');
@@ -105,6 +104,17 @@ export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
                     showToast("No quiz data to review.", true);
                 }
                 break;
+        }
+    });
+
+    // --- Level Selection ---
+    dom.levelGrid.addEventListener('click', (e) => {
+        const levelBtn = e.target.closest('.level-btn.unlocked');
+        if (levelBtn) {
+            playSound('click');
+            const level = parseInt(levelBtn.querySelector('.level-number').textContent);
+            state.currentLevel = level;
+            navigateTo(Screen.QUIZ);
         }
     });
 }

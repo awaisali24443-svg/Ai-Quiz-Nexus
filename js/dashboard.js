@@ -16,29 +16,25 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastQuizData = null;
 
     function updateAuthUI(user) {
-        const guestBanner = document.getElementById('guest-banner');
         const usernameDisplay = document.getElementById('username-display');
         const authActionButton = document.getElementById('auth-action-btn');
-        const mainContent = document.querySelector('main');
-        const header = document.getElementById('app-header');
         const profileNavBtn = document.querySelector('.nav-item[data-screen="profile-screen"]');
         const settingsBtn = document.getElementById('settings-btn');
 
-
         if (user.isGuest) {
-            guestBanner.classList.remove('hidden');
-            const bannerHeight = guestBanner.offsetHeight || 50;
-            header.style.top = `${bannerHeight}px`;
-            mainContent.style.paddingTop = `${100 + bannerHeight}px`;
+            dom.guestBanner.classList.remove('hidden');
+            const bannerHeight = dom.guestBanner.offsetHeight || 50;
+            dom.appHeader.style.top = `${bannerHeight}px`;
+            dom.mainContent.style.paddingTop = `${100 + bannerHeight}px`;
             usernameDisplay.textContent = 'Guest';
             authActionButton.textContent = 'Login';
             authActionButton.onclick = () => { window.location.href = '/login.html'; };
             if (profileNavBtn) profileNavBtn.classList.add('hidden');
-            if (settingsBtn) settingsBtn.classList.add('hidden'); // Hide settings for guests too
+            if (settingsBtn) settingsBtn.classList.add('hidden');
         } else {
-            guestBanner.classList.add('hidden');
-            header.style.top = '0px';
-            mainContent.style.paddingTop = '100px';
+            dom.guestBanner.classList.add('hidden');
+            dom.appHeader.style.top = '0px';
+            dom.mainContent.style.paddingTop = '100px';
             usernameDisplay.textContent = user.username;
             authActionButton.textContent = 'Logout';
             authActionButton.onclick = () => logout();
@@ -96,7 +92,9 @@ document.addEventListener('DOMContentLoaded', () => {
             item.classList.toggle('active', item.dataset.screen === screenId);
         });
         
-        updateBackground(screenId === Screen.LEVEL || screenId === Screen.QUIZ ? state.currentTopic?.id : null);
+        const backgroundTopicId = (screenId === Screen.LEVEL || screenId === Screen.QUIZ) && state.currentTopic ? state.currentTopic.id : null;
+        dom.appContainer.className = backgroundTopicId ? `bg-${backgroundTopicId}` : 'bg-default';
+        updateBackground(backgroundTopicId);
         
         switch (screenId) {
             case Screen.HOME: 
@@ -104,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case Screen.PROFILE:
                 if (state.user.isGuest) { navigateTo(Screen.HOME); break; }
-                renderProfileScreen();
+                await renderProfileScreen();
                 break;
             case Screen.LEVEL: 
                 renderLevelScreen(); 
@@ -133,10 +131,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         await recordQuizResult('Time Challenge', 1, quizResult.score, quizResult.questions);
                     }
                     
-                    if (!state.user.isGuest) {
-                        const newAchievements = await checkAndUnlockAchievements(quizResult.score, state.currentTopic?.title, state.currentLevel, state.gameMode);
-                        newAchievements.forEach(ach => showToast(`🏆 Achievement Unlocked: ${ach.name}`));
-                    }
+                    const newAchievements = await checkAndUnlockAchievements(quizResult.score, state.currentTopic?.title, state.currentLevel, state.gameMode);
+                    newAchievements.forEach(ach => showToast(`Achievement Unlocked: ${ach.name}`, false, true));
                     
                     navigateTo(Screen.RESULTS, quizResult);
                 }
@@ -161,6 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         initEventListeners(navigateTo, set3DMode, () => lastQuizData);
         initAudio();
+
+        window.addEventListener('offline', () => dom.offlineBanner.classList.remove('hidden'));
+        window.addEventListener('online', () => dom.offlineBanner.classList.add('hidden'));
+        if (!navigator.onLine) dom.offlineBanner.classList.remove('hidden');
     }
 
     init();

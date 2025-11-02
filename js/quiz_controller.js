@@ -1,4 +1,3 @@
-
 // This module is dynamically imported by dashboard.js only when a quiz starts.
 
 let quizState = {};
@@ -149,7 +148,6 @@ async function getQuizQuestions(answeredQuestions) {
     if (appState.gameMode === 'timeChallenge') {
         throw new Error('Time Challenge requires an internet connection.');
     }
-    utils.showToast('⚠️ Using offline fallback questions.', true);
     return utils.getFallbackQuestions(appState.currentTopic.title, appState.currentLevel);
 }
 

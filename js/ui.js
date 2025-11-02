@@ -1,4 +1,3 @@
-
 import { dom } from './dom.js';
 import { state, TOPICS, TOTAL_LEVELS, SCORE_TO_UNLOCK_NEXT_LEVEL } from './state.js';
 import { ACHIEVEMENTS } from './progress.js';
@@ -83,20 +82,6 @@ export function renderLevelScreen() {
         }
         dom.levelGrid.appendChild(btn);
     }
-    
-    dom.historyLog.innerHTML = '';
-    if (progress.history && progress.history.length > 0) {
-        [...progress.history].reverse().slice(0, 5).forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'history-item';
-            div.innerHTML = `
-                <div class="history-item-details"><span class="level-tag">Lvl ${item.level}</span> ${new Date(item.date).toLocaleDateString()}</div>
-                <div class="history-item-score ${item.score >= 7 ? 'pass' : 'fail'}">${item.score} / 10</div>`;
-            dom.historyLog.appendChild(div);
-        });
-    } else {
-        dom.historyLog.innerHTML = `<p class="no-history-message">No attempts recorded yet.</p>`;
-    }
 }
 
 export function renderResultsScreen({ score, timedOut }, questions) {
@@ -128,6 +113,8 @@ export function renderResultsScreen({ score, timedOut }, questions) {
 }
 
 export async function renderProfileScreen() {
+    if (state.user.isGuest) return;
+
     const { stats, topics, achievements } = state.userProgress;
 
     // Stats Cards
@@ -209,10 +196,11 @@ export function renderReviewModal(questions) {
         let optionsHtml = '<ul class="review-options">';
         q.options.forEach(opt => {
             let className = '';
-            if (opt === q.answer) className = 'correct';
-            else if (opt === q.yourAnswer) className = 'incorrect-user-choice';
+            if (opt === q.yourAnswer) className += ' user-choice';
+            if (opt === q.answer) className += ' correct';
+            else if (opt === q.yourAnswer) className += ' incorrect-user-choice';
             
-            optionsHtml += `<li class="${className}">${opt}</li>`;
+            optionsHtml += `<li class="${className.trim()}">${opt}</li>`;
         });
         optionsHtml += '</ul>';
         item.innerHTML = `<p>${index + 1}. ${q.q}</p>${optionsHtml}`;

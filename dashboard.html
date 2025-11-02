@@ -14,12 +14,13 @@
     <div id="app-container">
         <div id="webgl-container"></div>
         <div id="animated-bg-container">
-             <div class="bg-layer new-bg"></div>
+             <div class="bg-layer grid-bg" style="opacity: 0.15;"></div>
+             <div class="bg-layer starfield" style="opacity: 1;"></div>
         </div>
         
         <header id="app-header">
              <div class="container header-content">
-                <div class="logo">
+                <a href="#" class="logo">
                     <svg class="logo-icon" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                             <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -31,7 +32,7 @@
                         <path d="M20 12 L28 20 L20 28 L12 20 Z" stroke="url(#logo-gradient)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <h1>Knowledge Tester</h1>
-                </div>
+                </a>
                 <div id="header-nav-container">
                      <span id="user-greeting">Welcome, <span id="username-display">Player</span></span>
                      <div class="settings-container">
@@ -50,7 +51,7 @@
                             </div>
                             <div class="settings-section">
                                 <p class="settings-label">Visuals</p>
-                                <button class="settings-action-btn" id="toggle-3d-btn" title="Enable 3D Visuals">
+                                <button class="settings-action-btn" id="toggle-3d-btn" title="Toggle 3D Visuals">
                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                                     <span>3D Background</span>
                                 </button>
@@ -73,7 +74,7 @@
             <p>You are in Guest Mode. Your progress is saved on this device only. <a href="/signup.html">Sign up</a> to save progress permanently.</p>
         </div>
         <div id="offline-banner" class="hidden">
-            <p>Offline mode activated – data will be saved locally.</p>
+            <p>You appear to be offline. AI features are disabled. Using fallback questions.</p>
         </div>
 
         <main>
@@ -116,23 +117,21 @@
                         <button id="start-current-level-btn" class="btn btn-primary">Start Level <span id="current-level-text">1</span></button>
                         <button id="back-to-topics-btn" class="btn btn-secondary">&larr; Back to Topics</button>
                     </div>
-                    <div class="history-container"><h3 class="history-title">Attempt History</h3><div id="history-log" class="history-log"></div></div>
                 </div>
             </section>
             
             <section id="quiz-screen" class="screen hidden">
-                <div class="container"><div class="quiz-container"><div class="quiz-header"><div id="quiz-timer" class="quiz-timer">02:30</div><div id="question-counter">Question X of Y</div><button id="hint-btn" class="btn btn-secondary btn-hint hidden" disabled><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a1.964 1.964 0 0 0-.453-.618A6 6 0 0 1 2 6zm6 8.5a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1 0-1h.5a.5.5 0 0 1 .5.5zM.034 6a5.5 5.5 0 1 1 10.932 0A5.5 5.5 0 0 1 .034 6z"/></svg><span>Hint</span> (<span id="hints-left"></span>)</button></div><div class="progress-bar-container quiz-progress"><div id="quiz-progress-bar" class="progress-bar"></div></div><div class="quiz-body"><h2 id="question-text"></h2><div id="options-container" class="options-grid"></div><div id="quiz-action-buttons" class="action-buttons"></div></div></div></div>
+                <div class="container"><div class="quiz-container"><div class="quiz-header"><div id="quiz-timer" class="quiz-timer">02:30</div><div id="question-counter">Question X of Y</div></div><div class="progress-bar-container quiz-progress"><div id="quiz-progress-bar" class="progress-bar"></div></div><div class="quiz-body"><h2 id="question-text"></h2><div id="options-container" class="options-grid"></div></div></div></div>
             </section>
             
             <section id="results-screen" class="screen hidden">
-                <canvas id="confetti-canvas"></canvas>
                 <div class="container text-center"><h2 class="screen-title">Level Complete!</h2><p id="results-topic-text" class="screen-subtitle"></p><div class="final-score"><span id="final-score-value">0</span>/<span id="total-questions-value">10</span></div><div class="score-details"><div><p id="correct-answers" class="correct"></p><span>CORRECT</span></div><div><p id="incorrect-answers" class="incorrect"></p><span>INCORRECT</span></div></div><p id="unlock-message" class="unlock-message hidden"></p><div id="results-action-buttons" class="action-buttons"></div></div>
             </section>
 
         </main>
         
-        <footer id="app-footer" class="cyber-footer">
-            <div class="desktop-footer-content">
+        <footer id="app-footer">
+            <div class="desktop-footer-content cyber-footer">
                 <p>Created with intelligence and curiosity by Awais ⚡</p>
             </div>
             <nav class="mobile-nav">

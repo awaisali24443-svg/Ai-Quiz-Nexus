@@ -1,4 +1,3 @@
-
 export const TOTAL_LEVELS = 30;
 export const SCORE_TO_UNLOCK_NEXT_LEVEL = 7;
 
@@ -23,6 +22,9 @@ export const TOPICS = [
     { id: 'time_challenge', title: 'Time Challenge', description: 'A fast-paced quiz with random questions from all topics. How high can you score?', isChallenge: true },
 ];
 
+// We need a stable list of topics for the backend time challenge generation
+export const CHALLENGE_TOPICS_LIST = TOPICS.filter(t => !t.isChallenge).map(t => t.title);
+
 export const state = {
     user: null,
     is3DMode: true,
@@ -31,4 +33,5 @@ export const state = {
     currentLevel: 1,
     userProgress: { topics: {}, stats: { totalQuizzes: 0 }, achievements: {} },
     gameMode: 'topic', // 'topic' or 'timeChallenge'
+    topics: TOPICS, // Make topics available in the state
 };

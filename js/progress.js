@@ -1,4 +1,3 @@
-
 import { state, TOTAL_LEVELS } from './state.js';
 
 export const ACHIEVEMENTS = {
@@ -20,6 +19,9 @@ export async function saveProgress() {
     const storageKey = getStorageKey();
     if (!storageKey) return;
     
+    // Don't save progress for guests
+    if (state.user.isGuest) return;
+
     console.log(`Saving progress for ${storageKey}...`);
     localStorage.setItem(storageKey, JSON.stringify(state.userProgress));
 }
@@ -59,8 +61,6 @@ export async function unlockNextLevel(topicTitle, completedLevel) {
 }
 
 export async function recordQuizResult(topicTitle, level, score, questions) {
-    if (state.user.isGuest) return; // Don't record history for guests to save space
-
     const p = state.userProgress.topics[topicTitle] || { highestLevelUnlocked: 1, history: [] };
     p.history = p.history || [];
     // Only store essential question data to keep localStorage size down
@@ -109,7 +109,7 @@ export async function checkAndUnlockAchievements(score, topicTitle, level, gameM
     }
 
     const topicProgress = topics[topicTitle];
-    if (topicProgress && topicProgress.highestLevelUnlocked >= TOTAL_LEVELS) {
+    if (topicProgress && topicProgress.highestLevelUnlocked > TOTAL_LEVELS) {
         unlock('topicMaster');
     }
     
