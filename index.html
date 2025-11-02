@@ -28,49 +28,51 @@
         <div class="bg-layer starfield" style="opacity: 1;"></div>
     </div>
 
-    <main class="welcome-page">
-        <div class="welcome-container">
-            <div class="logo">
-                 <svg class="logo-icon welcome-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:var(--secondary);" />
-                            <stop offset="100%" style="stop-color:var(--primary);" />
-                        </linearGradient>
-                        <filter id="logo-glow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
-                            <feMerge>
-                                <feMergeNode in="blur" />
-                                <feMergeNode in="SourceGraphic" />
-                            </feMerge>
-                        </filter>
-                    </defs>
-                    <g filter="url(#logo-glow)">
-                        <!-- Stylized 'K' shape resembling a neural network -->
-                        <path class="logo-path" d="M25 20 V 80" stroke="url(#logo-gradient)" stroke-width="6" stroke-linecap="round" fill="none" />
-                        <path class="logo-path logo-path-2" d="M75 20 L 40 50 L 75 80" stroke="url(#logo-gradient)" stroke-width="6" stroke-linecap="round" fill="none" />
-                        
-                        <!-- Nodes -->
-                        <circle class="logo-node" cx="25" cy="20" r="5" fill="var(--primary)" />
-                        <circle class="logo-node logo-node-2" cx="25" cy="80" r="5" fill="var(--primary)" />
-                        <circle class="logo-node logo-node-3" cx="40" cy="50" r="5" fill="var(--primary)" />
-                        <circle class="logo-node logo-node-4" cx="75" cy="20" r="5" fill="var(--secondary)" />
-                        <circle class="logo-node logo-node-5" cx="75" cy="80" r="5" fill="var(--secondary)" />
-                    </g>
-                </svg>
+    <div class="static-page-container">
+        <main class="welcome-page">
+            <div class="welcome-container">
+                <div class="logo">
+                     <svg class="logo-icon welcome-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:var(--secondary);" />
+                                <stop offset="100%" style="stop-color:var(--primary);" />
+                            </linearGradient>
+                            <filter id="logo-glow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+                                <feMerge>
+                                    <feMergeNode in="blur" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <g filter="url(#logo-glow)">
+                            <!-- Stylized 'K' shape resembling a neural network -->
+                            <path class="logo-path" d="M25 20 V 80" stroke="url(#logo-gradient)" stroke-width="6" stroke-linecap="round" fill="none" />
+                            <path class="logo-path logo-path-2" d="M75 20 L 40 50 L 75 80" stroke="url(#logo-gradient)" stroke-width="6" stroke-linecap="round" fill="none" />
+                            
+                            <!-- Nodes -->
+                            <circle class="logo-node" cx="25" cy="20" r="5" fill="var(--primary)" />
+                            <circle class="logo-node logo-node-2" cx="25" cy="80" r="5" fill="var(--primary)" />
+                            <circle class="logo-node logo-node-3" cx="40" cy="50" r="5" fill="var(--primary)" />
+                            <circle class="logo-node logo-node-4" cx="75" cy="20" r="5" fill="var(--secondary)" />
+                            <circle class="logo-node logo-node-5" cx="75" cy="80" r="5" fill="var(--secondary)" />
+                        </g>
+                    </svg>
+                </div>
+                <h1 class="welcome-title">Knowledge Tester</h1>
+                <p class="welcome-subtitle">An intelligent quiz platform that generates dynamic challenges on various topics using AI. Test and expand your knowledge from easy to expert levels.</p>
+                <div class="welcome-actions">
+                    <a href="/dashboard.html" class="btn btn-primary btn-large">Continue as Guest</a>
+                    <a href="/login.html" class="btn btn-secondary">Login / Sign Up</a>
+                </div>
             </div>
-            <h1 class="welcome-title">Knowledge Tester</h1>
-            <p class="welcome-subtitle">An intelligent quiz platform that generates dynamic challenges on various topics using AI. Test and expand your knowledge from easy to expert levels.</p>
-            <div class="welcome-actions">
-                <a href="/dashboard.html" class="btn btn-primary btn-large">Continue as Guest</a>
-                <a href="/login.html" class="btn btn-secondary">Login / Sign Up</a>
-            </div>
-        </div>
-    </main>
-    
-    <footer class="cyber-footer">
-        <p>Created with intelligence and curiosity by Awais ⚡</p>
-    </footer>
+        </main>
+        
+        <footer class="cyber-footer">
+            <p>Created with intelligence and curiosity by Awais ⚡</p>
+        </footer>
+    </div>
 
     <script src="js/main.js" defer></script>
 </body>

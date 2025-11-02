@@ -76,6 +76,10 @@ body {
     overflow-x: hidden; /* Prevent horizontal scroll */
     -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
     transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* --- Core Layout Containers --- */
+.static-page-container, #app-container {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -83,11 +87,9 @@ body {
 
 #app-container {
     position: relative;
-    min-height: 100vh;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
 }
+
 
 .container {
     width: 100%;
@@ -140,8 +142,8 @@ body.mode-3d #animated-bg-container {
     transition: opacity 1s ease-in-out;
     background-size: cover;
 }
-#app-container.bg-default .grid-bg { opacity: 0.15; }
-#app-container.bg-default .starfield { opacity: 1; }
+#app-container.bg-default .grid-bg, .static-page-container .grid-bg { opacity: 0.15; }
+#app-container.bg-default .starfield, .static-page-container .starfield { opacity: 1; }
 #app-container.bg-programming .matrix-bg { opacity: 1; }
 #app-container.bg-biology .dna-bg { opacity: 0.4; }
 #app-container.bg-space_astronomy .starfield { opacity: 1; }
