@@ -76,20 +76,24 @@ body {
     overflow-x: hidden; /* Prevent horizontal scroll */
     -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
     transition: background-color 0.4s ease, color 0.4s ease;
+
+    /* Core layout fix: Make body the primary flex container */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 /* --- Core Layout Containers --- */
 .static-page-container, #app-container {
+    flex-grow: 1; /* Make the main container grow to fill the body */
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
 }
 
 #app-container {
     position: relative;
     overflow: hidden;
 }
-
 
 .container {
     width: 100%;
