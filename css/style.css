@@ -1,3 +1,4 @@
+
 :root {
     --font-body: 'Inter', sans-serif;
     --font-title: 'Orbitron', sans-serif;
@@ -713,6 +714,33 @@ main {
 [data-theme="light"] .review-options li.correct { color: #155724; }
 [data-theme="light"] .review-options li.incorrect-user-choice { color: #721c24; }
 .close-btn { position: absolute; top: 1rem; right: 1rem; z-index: 1; }
+
+.review-explanation {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-left: 3px solid var(--accent-yellow);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--text-medium);
+}
+.review-explanation p {
+    margin: 0;
+    line-height: 1.5;
+}
+.review-explanation strong {
+    color: var(--text-light);
+}
+
+[data-theme="light"] .review-explanation {
+    background-color: #fff8e1;
+    color: #665c3e;
+    border-left-color: var(--accent-yellow);
+}
+[data-theme="light"] .review-explanation strong {
+    color: var(--text-light);
+}
+
 
 /* Toast Notifications */
 #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }

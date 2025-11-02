@@ -1,3 +1,4 @@
+
 import { state, TOTAL_LEVELS } from './state.js';
 
 export const ACHIEVEMENTS = {
@@ -69,7 +70,8 @@ export async function recordQuizResult(topicTitle, level, score, questions) {
             q: q.q, 
             answer: q.answer,
             options: q.options,
-            yourAnswer: q.yourAnswer // Assumes this is set in quiz_controller
+            yourAnswer: q.yourAnswer, // Assumes this is set in quiz_controller
+            explanation: q.explanation // Add the explanation
         })) 
     });
 

@@ -1,3 +1,4 @@
+
 import { dom } from './dom.js';
 import { state, TOPICS, TOTAL_LEVELS, SCORE_TO_UNLOCK_NEXT_LEVEL } from './state.js';
 import { ACHIEVEMENTS } from './progress.js';
@@ -203,7 +204,15 @@ export function renderReviewModal(questions) {
             optionsHtml += `<li class="${className.trim()}">${opt}</li>`;
         });
         optionsHtml += '</ul>';
-        item.innerHTML = `<p>${index + 1}. ${q.q}</p>${optionsHtml}`;
+
+        let explanationHtml = '';
+        if (q.explanation) {
+            explanationHtml = `<div class="review-explanation">
+                <p><strong>💡 Explanation:</strong> ${q.explanation}</p>
+            </div>`;
+        }
+
+        item.innerHTML = `<p>${index + 1}. ${q.q}</p>${optionsHtml}${explanationHtml}`;
         dom.reviewContent.appendChild(item);
     });
     dom.reviewModal.classList.remove('hidden');

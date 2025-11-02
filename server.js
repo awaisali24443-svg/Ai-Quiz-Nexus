@@ -1,3 +1,4 @@
+
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -145,9 +146,10 @@ const quizSchema = {
                 properties: {
                     q: { type: Type.STRING, description: 'The question text.' },
                     options: { type: Type.ARRAY, description: 'An array of 4 strings representing the possible answers.', items: { type: Type.STRING } },
-                    answer: { type: Type.STRING, description: 'The correct answer, which must exactly match one of the items in the options array.' }
+                    answer: { type: Type.STRING, description: 'The correct answer, which must exactly match one of the items in the options array.' },
+                    explanation: { type: Type.STRING, description: 'A brief, one-sentence explanation for why the correct answer is correct.' }
                 },
-                required: ['q', 'options', 'answer']
+                required: ['q', 'options', 'answer', 'explanation']
             }
         }
     },
@@ -181,7 +183,7 @@ app.post('/api/generate-quiz', async (req, res) => {
     else if (level <= 20) difficulty = 'Intermediate';
     else difficulty = 'Expert';
 
-    let prompt = `Generate a quiz with ${questionsPerQuiz} multiple-choice questions on the topic of '${topic}'. The difficulty should be '${difficulty}', appropriate for level ${level} out of ${totalLevels}. A higher level means a harder quiz. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
+    let prompt = `Generate a quiz with ${questionsPerQuiz} multiple-choice questions on the topic of '${topic}'. The difficulty should be '${difficulty}', appropriate for level ${level} out of ${totalLevels}. A higher level means a harder quiz. Each question must have exactly 4 options. One of the options must be the correct answer. For each question, also provide a brief, one-sentence explanation for why the answer is correct. Provide the response as a JSON object adhering to the provided schema.`;
 
     if (answeredQuestions && answeredQuestions.length > 0) {
         const questionsToAvoid = answeredQuestions.join('; ');
@@ -230,7 +232,7 @@ app.post('/api/generate-time-challenge', async (req, res) => {
         return res.status(503).json({ message: 'AI service could not be initialized. The API key might be invalid.' });
     }
 
-    const prompt = `Generate a quiz with exactly ${questionsPerQuiz} multiple-choice questions. The questions should be a mix of general knowledge from the following topics: ${selectedTopics}. The difficulty should be mixed, from easy to medium. Each question must have exactly 4 options. One of the options must be the correct answer. Provide the response as a JSON object adhering to the provided schema.`;
+    const prompt = `Generate a quiz with exactly ${questionsPerQuiz} multiple-choice questions. The questions should be a mix of general knowledge from the following topics: ${selectedTopics}. The difficulty should be mixed, from easy to medium. Each question must have exactly 4 options. One of the options must be the correct answer. For each question, also provide a brief, one-sentence explanation for why the answer is correct. Provide the response as a JSON object adhering to the provided schema.`;
 
     try {
         const response = await ai.models.generateContent({
