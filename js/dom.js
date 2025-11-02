@@ -2,7 +2,7 @@
 // It will be populated once the DOM is fully loaded and parsed.
 export const dom = {};
 
-function populateDom() {
+export function initializeDom() {
     Object.assign(dom, {
         appContainer: document.getElementById('app-container'),
         screens: document.querySelectorAll('.screen'),
@@ -67,12 +67,4 @@ function populateDom() {
         closeReviewModalBtn: document.getElementById('close-review-modal-btn'),
         reviewContent: document.getElementById('review-content'),
     });
-}
-
-// Ensure DOM is populated when ready, handling cases where the script might be loaded
-// after the DOM is already interactive.
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', populateDom);
-} else {
-    populateDom();
 }

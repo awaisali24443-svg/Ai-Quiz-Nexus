@@ -1,7 +1,8 @@
 
+
 import sceneManager from './3d/sceneManager.js';
 import { state, Screen, SCORE_TO_UNLOCK_NEXT_LEVEL } from './state.js';
-import { dom } from './dom.js';
+import { dom, initializeDom } from './dom.js';
 import { loadProgress, recordQuizResult, unlockNextLevel, checkAndUnlockAchievements } from './progress.js';
 import { renderHomeScreen, renderLevelScreen, renderResultsScreen, renderProfileScreen } from './ui.js';
 import { showLoading, showToast, initAudio, playSound } from './utils.js';
@@ -12,6 +13,9 @@ import { checkAuth, logout } from './auth.js';
 document.addEventListener('DOMContentLoaded', () => {
     'use strict';
     
+    // This is the critical fix: populate the dom object now that the document is ready.
+    initializeDom();
+
     let quizControllerModule = null;
     let lastQuizData = null;
 
@@ -165,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             window.addEventListener('offline', () => dom.offlineBanner.classList.remove('hidden'));
             window.addEventListener('online', () => dom.offlineBanner.classList.add('hidden'));
-            if (!navigator.onLine) dom.offlineBanner.classList.add('hidden');
+            if (!navigator.onLine) dom.offlineBanner.classList.remove('hidden');
         
         } catch (error) {
             console.error("Critical error during dashboard initialization:", error);
