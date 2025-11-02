@@ -1,4 +1,5 @@
 // This module is dynamically imported by dashboard.js only when a quiz starts.
+import { gsap } from 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js';
 
 let quizState = {};
 let appState = {};
@@ -8,6 +9,7 @@ let timerIntervalId = null;
 let loadingIntervalId = null;
 
 const QUESTIONS_PER_QUIZ = 10;
+const TIME_CHALLENGE_DURATION = 150; // 2 minutes 30 seconds
 const loadingMessages = [
     "Contacting the AI oracle...",
     "Generating mind-bending questions...",
@@ -54,8 +56,8 @@ function stopTimer() {
 }
 
 function startTimer(duration, onTimeout) {
-    let timer = duration;
     stopTimer();
+    let timer = duration;
 
     timerIntervalId = setInterval(() => {
         const minutes = String(Math.floor(timer / 60)).padStart(2, '0');
@@ -65,11 +67,12 @@ function startTimer(duration, onTimeout) {
         dom.quizTimer.classList.toggle('low-time', timer <= 30);
 
         if (--timer < 0) {
+            stopTimer();
             if (quizState.isComplete) return;
+
             utils.playSound('incorrect');
             quizState.timedOut = true;
             quizState.isComplete = true;
-            stopTimer();
             onTimeout(quizState);
         }
     }, 1000);
@@ -77,6 +80,7 @@ function startTimer(duration, onTimeout) {
 
 function renderQuizQuestion() {
     const { questions, currentQuestionIndex } = quizState;
+    if (!questions || questions.length === 0) return;
     const question = questions[currentQuestionIndex];
     
     dom.questionCounter.textContent = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
@@ -93,18 +97,11 @@ function renderQuizQuestion() {
         dom.optionsContainer.appendChild(btn);
     });
 
-    const quizBody = document.querySelector('.quiz-body');
+    const quizBody = dom.questionText.parentElement;
     gsap.fromTo(quizBody, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
     gsap.fromTo('.option-btn', 
         { opacity: 0, x: -20 }, 
-        { 
-            opacity: 1, 
-            x: 0, 
-            duration: 0.4, 
-            stagger: 0.08, 
-            ease: 'power2.out', 
-            delay: 0.2 
-        }
+        { opacity: 1, x: 0, duration: 0.4, stagger: 0.08, ease: 'power2.out', delay: 0.2 }
     );
 }
 
@@ -131,11 +128,12 @@ function handleAnswerSelection(selectedButton) {
     });
 
     setTimeout(() => {
-        gsap.to('.quiz-body', {
+        const quizBody = dom.questionText.parentElement;
+        gsap.to(quizBody, {
             opacity: 0, y: -30, duration: 0.4, ease: 'power2.in',
             onComplete: () => handleNextQuestion()
         });
-    }, 2000);
+    }, 1500);
 }
 
 function handleNextQuestion() {
@@ -182,9 +180,10 @@ async function getQuizQuestions(answeredQuestions) {
 export function cleanupQuiz() {
     stopTimer();
     stopLoadingAnimation();
+    window.removeEventListener('quizComplete', () => {}); // Remove any stale listeners
 }
 
-export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils, answeredQuestions = []) {
+export function runQuiz(initialState, domElements, sharedUtils, answeredQuestions = []) {
     return new Promise(async (resolve) => {
         appState = initialState;
         dom = domElements;
@@ -205,14 +204,13 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
         utils.showLoading(true);
         startLoadingAnimation(dom.loadingText);
 
-
         try {
             const questions = await getQuizQuestions(answeredQuestions);
-            quizState.questions = questions.sort(() => 0.5 - Math.random()).slice(0, QUESTIONS_PER_QUIZ);
+            quizState.questions = questions.slice(0, QUESTIONS_PER_QUIZ);
             
             if (appState.gameMode === 'timeChallenge') {
                 dom.quizTimer.classList.remove('hidden');
-                startTimer(150, () => window.dispatchEvent(new CustomEvent('quizComplete', { detail: quizState })));
+                startTimer(TIME_CHALLENGE_DURATION, () => window.dispatchEvent(new CustomEvent('quizComplete', { detail: quizState })));
             } else {
                 dom.quizTimer.classList.add('hidden');
             }
@@ -221,6 +219,7 @@ export function runQuiz(prefetchPromise, initialState, domElements, sharedUtils,
         } catch (error) {
             console.error(error);
             utils.showToast(`Failed to start quiz: ${error.message}`, true);
+            window.removeEventListener('quizComplete', onQuizComplete); // clean up listener on error
             resolve({ error: true });
         } finally {
             utils.showLoading(false);
