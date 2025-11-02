@@ -1,12 +1,13 @@
 // This module is dynamically imported by dashboard.js only when a quiz starts.
 import { gsap } from 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js';
 
-let quizState = {};
+let localState = {};
 let appState = {};
 let dom = {};
 let utils = {};
 let timerIntervalId = null;
 let loadingIntervalId = null;
+let quizPromiseResolve = null;
 
 const QUESTIONS_PER_QUIZ = 10;
 const TIME_CHALLENGE_DURATION = 150; // 2 minutes 30 seconds
@@ -18,68 +19,87 @@ const loadingMessages = [
     "Waking up the AI..."
 ];
 
-function startLoadingAnimation(textElement) {
+/**
+ * Shows an animated loading message.
+ */
+function startLoadingAnimation() {
     stopLoadingAnimation();
     let messageIndex = 0;
-    textElement.textContent = loadingMessages[messageIndex];
+    dom.loadingText.textContent = loadingMessages[messageIndex];
     loadingIntervalId = setInterval(() => {
         messageIndex = (messageIndex + 1) % loadingMessages.length;
-        gsap.to(textElement, {
+        gsap.to(dom.loadingText, {
             opacity: 0, y: -10, duration: 0.3, onComplete: () => {
-                textElement.textContent = loadingMessages[messageIndex];
-                gsap.to(textElement, { opacity: 1, y: 0, duration: 0.3 });
+                dom.loadingText.textContent = loadingMessages[messageIndex];
+                gsap.to(dom.loadingText, { opacity: 1, y: 0, duration: 0.3 });
             }
         });
     }, 2000);
 }
 
+/**
+ * Stops the loading message animation.
+ */
 function stopLoadingAnimation() {
-    if (loadingIntervalId) clearInterval(loadingIntervalId);
+    clearInterval(loadingIntervalId);
     loadingIntervalId = null;
 }
 
-function resetQuizState() {
-    stopTimer();
-    quizState = {
+/**
+ * Resets the local state for a new quiz.
+ */
+function resetLocalState() {
+    cleanupQuiz(); // Ensure everything is stopped before resetting
+    localState = {
         questions: [],
         currentQuestionIndex: 0,
         score: 0,
         answerSubmitted: false,
-        timedOut: false,
         isComplete: false,
     };
 }
 
+/**
+ * Stops the quiz timer.
+ */
 function stopTimer() {
-    if (timerIntervalId) clearInterval(timerIntervalId);
+    clearInterval(timerIntervalId);
     timerIntervalId = null;
 }
 
-function startTimer(duration, onTimeout) {
+/**
+ * Starts the quiz timer.
+ * @param {number} duration - The timer duration in seconds.
+ */
+function startTimer(duration) {
     stopTimer();
     let timer = duration;
 
-    timerIntervalId = setInterval(() => {
+    const updateTimerDisplay = () => {
         const minutes = String(Math.floor(timer / 60)).padStart(2, '0');
         const seconds = String(timer % 60).padStart(2, '0');
-        
         dom.quizTimer.textContent = `${minutes}:${seconds}`;
         dom.quizTimer.classList.toggle('low-time', timer <= 30);
+    };
 
-        if (--timer < 0) {
-            stopTimer();
-            if (quizState.isComplete) return;
+    updateTimerDisplay(); // Initial display
 
+    timerIntervalId = setInterval(() => {
+        timer--;
+        updateTimerDisplay();
+
+        if (timer < 0) {
             utils.playSound('incorrect');
-            quizState.timedOut = true;
-            quizState.isComplete = true;
-            onTimeout(quizState);
+            completeQuiz({ timedOut: true });
         }
     }, 1000);
 }
 
+/**
+ * Renders the current quiz question and options.
+ */
 function renderQuizQuestion() {
-    const { questions, currentQuestionIndex } = quizState;
+    const { questions, currentQuestionIndex } = localState;
     if (!questions || questions.length === 0) return;
     const question = questions[currentQuestionIndex];
     
@@ -93,10 +113,11 @@ function renderQuizQuestion() {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.textContent = optionText;
-        btn.addEventListener('click', () => handleAnswerSelection(btn));
+        btn.onclick = () => handleAnswerSelection(btn);
         dom.optionsContainer.appendChild(btn);
     });
-
+    
+    // Animate the question in
     const quizBody = dom.questionText.parentElement;
     gsap.fromTo(quizBody, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
     gsap.fromTo('.option-btn', 
@@ -105,12 +126,16 @@ function renderQuizQuestion() {
     );
 }
 
+/**
+ * Handles the user's selection of an answer.
+ * @param {HTMLButtonElement} selectedButton - The button that was clicked.
+ */
 function handleAnswerSelection(selectedButton) {
-    if (quizState.answerSubmitted) return;
-    quizState.answerSubmitted = true;
+    if (localState.answerSubmitted) return;
+    localState.answerSubmitted = true;
 
     const selectedAnswer = selectedButton.textContent;
-    const question = quizState.questions[quizState.currentQuestionIndex];
+    const question = localState.questions[localState.currentQuestionIndex];
     const isCorrect = selectedAnswer === question.answer;
 
     question.yourAnswer = selectedAnswer; // Store user's answer for review
@@ -118,38 +143,66 @@ function handleAnswerSelection(selectedButton) {
     utils.playSound(isCorrect ? 'correct' : 'incorrect');
     
     if (isCorrect) {
-        quizState.score++;
+        localState.score++;
     }
 
+    // Visually provide feedback
     document.querySelectorAll('.option-btn').forEach(btn => {
         btn.disabled = true;
         if (btn.textContent === question.answer) btn.classList.add('correct');
         else if (btn === selectedButton) btn.classList.add('incorrect');
     });
 
+    // Animate out after a delay, then move to the next question
     setTimeout(() => {
         const quizBody = dom.questionText.parentElement;
         gsap.to(quizBody, {
             opacity: 0, y: -30, duration: 0.4, ease: 'power2.in',
-            onComplete: () => handleNextQuestion()
+            onComplete: () => advanceToNextQuestion()
         });
     }, 1500);
 }
 
-function handleNextQuestion() {
-    if (quizState.isComplete) return;
+/**
+ * Advances the quiz to the next question or completes it if it's the last one.
+ */
+function advanceToNextQuestion() {
+    if (localState.isComplete) return;
 
-    if (quizState.currentQuestionIndex < quizState.questions.length - 1) {
-        quizState.currentQuestionIndex++;
-        quizState.answerSubmitted = false;
+    if (localState.currentQuestionIndex < localState.questions.length - 1) {
+        localState.currentQuestionIndex++;
+        localState.answerSubmitted = false;
         renderQuizQuestion();
     } else {
-        quizState.isComplete = true;
-        stopTimer();
-        window.dispatchEvent(new CustomEvent('quizComplete', { detail: quizState }));
+        completeQuiz();
     }
 }
 
+/**
+ * Finalizes the quiz and resolves the main promise.
+ * @param {object} [options={}] - Optional completion flags like `timedOut`.
+ */
+function completeQuiz(options = {}) {
+    if (localState.isComplete) return;
+    localState.isComplete = true;
+    stopTimer();
+
+    if (quizPromiseResolve) {
+        quizPromiseResolve({
+            score: localState.score,
+            timedOut: options.timedOut || false,
+            questions: localState.questions,
+            error: false
+        });
+        quizPromiseResolve = null;
+    }
+}
+
+/**
+ * Fetches quiz questions from the API or falls back to local data.
+ * @param {string[]} answeredQuestions - A list of previous questions to avoid repetition.
+ * @returns {Promise<object[]>} A promise that resolves with the array of questions.
+ */
 async function getQuizQuestions(answeredQuestions) {
     if (navigator.onLine) {
          try {
@@ -177,40 +230,42 @@ async function getQuizQuestions(answeredQuestions) {
     return utils.getFallbackQuestions(appState.currentTopic.title, appState.currentLevel);
 }
 
+/**
+ * Cleans up all resources used by the quiz controller.
+ */
 export function cleanupQuiz() {
     stopTimer();
     stopLoadingAnimation();
-    window.removeEventListener('quizComplete', () => {}); // Remove any stale listeners
+    if (quizPromiseResolve) {
+        // If a quiz is in progress and we navigate away, resolve with an error state
+        quizPromiseResolve({ error: true, message: "Quiz aborted" });
+        quizPromiseResolve = null;
+    }
 }
 
-export function runQuiz(initialState, domElements, sharedUtils, answeredQuestions = []) {
+/**
+ * The main entry point to start and run a quiz.
+ * @returns {Promise<object>} A promise that resolves with the quiz results.
+ */
+export function runQuiz(initialAppState, domElements, sharedUtils, answeredQuestions = []) {
     return new Promise(async (resolve) => {
-        appState = initialState;
+        quizPromiseResolve = resolve;
+        appState = initialAppState;
         dom = domElements;
         utils = sharedUtils;
 
-        const onQuizComplete = (e) => {
-            resolve({ 
-                score: e.detail.score, 
-                timedOut: e.detail.timedOut,
-                questions: e.detail.questions
-            });
-            window.removeEventListener('quizComplete', onQuizComplete);
-        };
-        window.addEventListener('quizComplete', onQuizComplete);
-
-        resetQuizState();
+        resetLocalState();
         dom.quizProgressBar.style.width = '0%';
         utils.showLoading(true);
-        startLoadingAnimation(dom.loadingText);
+        startLoadingAnimation();
 
         try {
             const questions = await getQuizQuestions(answeredQuestions);
-            quizState.questions = questions.slice(0, QUESTIONS_PER_QUIZ);
+            localState.questions = questions.slice(0, QUESTIONS_PER_QUIZ);
             
             if (appState.gameMode === 'timeChallenge') {
                 dom.quizTimer.classList.remove('hidden');
-                startTimer(TIME_CHALLENGE_DURATION, () => window.dispatchEvent(new CustomEvent('quizComplete', { detail: quizState })));
+                startTimer(TIME_CHALLENGE_DURATION);
             } else {
                 dom.quizTimer.classList.add('hidden');
             }
@@ -219,8 +274,7 @@ export function runQuiz(initialState, domElements, sharedUtils, answeredQuestion
         } catch (error) {
             console.error(error);
             utils.showToast(`Failed to start quiz: ${error.message}`, true);
-            window.removeEventListener('quizComplete', onQuizComplete); // clean up listener on error
-            resolve({ error: true });
+            completeQuiz({ error: true });
         } finally {
             utils.showLoading(false);
             stopLoadingAnimation();

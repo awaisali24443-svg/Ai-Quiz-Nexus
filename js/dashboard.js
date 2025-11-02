@@ -11,12 +11,15 @@ import { checkAuth, logout } from './auth.js';
 class DashboardApp {
     constructor() {
         this.quizControllerModule = null;
-        this.lastQuizData = null;
+        this.lastQuizData = null; // Stores questions from the last quiz for review
         this.isInitialized = false;
 
         document.addEventListener('DOMContentLoaded', this.init.bind(this));
     }
 
+    /**
+     * Initializes the entire application.
+     */
     async init() {
         if (this.isInitialized) return;
         this.isInitialized = true;
@@ -40,6 +43,7 @@ class DashboardApp {
 
             await this.navigateTo(Screen.HOME);
             
+            // Restore user's 3D mode preference
             const is3DEnabled = localStorage.getItem('3dMode') !== 'false';
             this.set3DMode(is3DEnabled);
         
@@ -47,6 +51,7 @@ class DashboardApp {
             console.error("Critical error during dashboard initialization:", error);
             document.body.innerHTML = `<div style="position: fixed; inset: 0; color: white; background-color: #0a0a1f; padding: 40px; text-align: center; z-index: 9999;"><h1>An Unexpected Error Occurred</h1><p>The quiz dashboard could not be loaded. Please try refreshing the page.</p><p style="color: #666; font-size: 14px; margin-top: 20px;">Error: ${error.message}</p></div>`;
         } finally {
+            // Fade in the main content once everything is ready
             if (dom.mainContent) {
                 dom.mainContent.style.visibility = 'visible';
                 dom.mainContent.style.opacity = '1';
@@ -54,67 +59,96 @@ class DashboardApp {
         }
     }
 
+    /**
+     * Sets up global listeners for offline/online status.
+     */
     setupGlobalEventListeners() {
-        window.addEventListener('offline', () => dom.offlineBanner.classList.remove('hidden'));
-        window.addEventListener('online', () => dom.offlineBanner.classList.add('hidden'));
-        if (!navigator.onLine) dom.offlineBanner.classList.remove('hidden');
+        const handleOnlineStatus = () => {
+            dom.offlineBanner.classList.toggle('hidden', navigator.onLine);
+            this.adjustLayoutForBanners();
+        };
+        window.addEventListener('offline', handleOnlineStatus);
+        window.addEventListener('online', handleOnlineStatus);
+        handleOnlineStatus(); // Set initial state
     }
 
+    /**
+     * Updates header UI based on whether the user is a guest or logged in.
+     */
     updateAuthUI() {
-        const user = state.user;
-        const usernameDisplay = document.getElementById('username-display');
-        const authActionButton = document.getElementById('auth-action-btn');
+        const { user } = state;
         const profileNavBtn = document.querySelector('.nav-item[data-screen="profile-screen"]');
-        const settingsContainer = document.querySelector('.settings-container');
 
         if (user.isGuest) {
             dom.guestBanner.classList.remove('hidden');
-            usernameDisplay.textContent = 'Guest';
-            authActionButton.textContent = 'Login';
-            authActionButton.onclick = () => { window.location.href = '/login.html'; };
+            dom.usernameDisplay.textContent = 'Guest';
+            dom.authActionBtn.textContent = 'Login';
+            dom.authActionBtn.onclick = () => { window.location.href = '/login.html'; };
             if (profileNavBtn) profileNavBtn.classList.add('hidden');
-            if (settingsContainer) settingsContainer.classList.add('hidden');
+            dom.settingsContainer.classList.add('hidden');
         } else {
             dom.guestBanner.classList.add('hidden');
-            usernameDisplay.textContent = user.username;
-            authActionButton.textContent = 'Logout';
-            authActionButton.onclick = () => logout();
+            dom.usernameDisplay.textContent = user.username;
+            dom.authActionBtn.textContent = 'Logout';
+            dom.authActionBtn.onclick = () => logout();
             if (profileNavBtn) profileNavBtn.classList.remove('hidden');
-            if (settingsContainer) settingsContainer.classList.remove('hidden');
+            dom.settingsContainer.classList.remove('hidden');
         }
         this.adjustLayoutForBanners();
     }
 
+    /**
+     * Adjusts layout paddings to account for visible banners (Guest/Offline).
+     */
     adjustLayoutForBanners() {
         const guestBannerHeight = dom.guestBanner.classList.contains('hidden') ? 0 : (dom.guestBanner.offsetHeight || 50);
-        dom.appHeader.style.top = `${guestBannerHeight}px`;
-        dom.mainContent.style.paddingTop = `${100 + guestBannerHeight}px`;
+        const offlineBannerHeight = dom.offlineBanner.classList.contains('hidden') ? 0 : (dom.offlineBanner.offsetHeight || 50);
+        const totalBannerHeight = guestBannerHeight + offlineBannerHeight;
+        dom.appHeader.style.top = `${totalBannerHeight}px`;
+        dom.mainContent.style.paddingTop = `${100 + totalBannerHeight}px`;
     }
 
+    /**
+     * Toggles 3D background mode on or off.
+     * @param {boolean} enabled - Whether to enable 3D mode.
+     */
+    async set3DMode(enabled) {
+        state.is3DMode = enabled;
+        localStorage.setItem('3dMode', String(enabled));
+        dom.toggle3DBtn.querySelector('span').textContent = enabled ? '3D Background' : '2D Background';
+        dom.toggle3DBtn.classList.toggle('active', enabled);
+        
+        showLoading(true, "Switching visuals...");
+        const currentTopicId = (state.currentScreen === Screen.LEVEL || state.currentScreen === Screen.QUIZ) 
+            ? state.currentTopic?.id 
+            : 'default';
+        await this.updateBackground(currentTopicId);
+        showLoading(false);
+    }
+
+    /**
+     * Manages the background, switching between 2D and 3D scenes.
+     * @param {string|null} topicId - The topic ID to determine which scene to load.
+     */
     async updateBackground(topicId = null) {
         const sceneToLoad = (topicId === 'default' || !topicId) ? 'world_knowledge' : topicId;
+        
+        // Update 2D background class first for a fast fallback
+        dom.appContainer.className = `bg-${sceneToLoad}`;
+
         if (state.is3DMode && sceneManager.isWebGLAvailable()) {
             document.body.classList.add('mode-3d');
             await sceneManager.init(sceneToLoad, dom.webGLContainer);
         } else {
             document.body.classList.remove('mode-3d');
-            sceneManager.destroy();
+            sceneManager.destroy(); // Ensure any existing scene is destroyed
         }
     }
 
-    set3DMode(enabled) {
-        state.is3DMode = enabled;
-        localStorage.setItem('3dMode', String(enabled));
-        const toggleBtn = document.getElementById('toggle-3d-btn');
-        if(toggleBtn) {
-            toggleBtn.querySelector('span').textContent = enabled ? '3D Background' : '2D Background';
-            toggleBtn.classList.toggle('active', enabled);
-        }
-        showLoading(true, "Switching visuals...");
-        const currentBg = (state.currentScreen === Screen.LEVEL || state.currentScreen === Screen.QUIZ) ? state.currentTopic?.id : 'default';
-        this.updateBackground(currentBg).finally(() => showLoading(false));
-    }
-
+    /**
+     * Handles user selecting a topic from the home screen.
+     * @param {object} topic - The selected topic object.
+     */
     handleTopicSelection(topic) {
         playSound('click');
         state.currentTopic = topic;
@@ -130,9 +164,16 @@ class DashboardApp {
         }
     }
 
+    /**
+     * Main navigation logic to switch between application screens.
+     * @param {string} screenId - The ID of the screen to navigate to.
+     * @param {object} [data={}] - Optional data to pass to the new screen.
+     */
     async navigateTo(screenId, data = {}) {
-        if (state.currentScreen === screenId) return;
-
+        if (state.isNavigating) return; // Prevent concurrent navigation
+        state.isNavigating = true;
+        
+        // If leaving the quiz screen, ensure its resources are cleaned up.
         if (state.currentScreen === Screen.QUIZ && this.quizControllerModule) {
             this.quizControllerModule.cleanupQuiz();
         }
@@ -140,10 +181,11 @@ class DashboardApp {
         console.log(`Navigating to screen: ${screenId}`);
         state.currentScreen = screenId;
         showLoading(true, "Loading...");
-        
+
         try {
-            const backgroundTopicId = (screenId === Screen.LEVEL || screenId === Screen.QUIZ) && state.currentTopic ? state.currentTopic.id : 'default';
-            dom.appContainer.className = `bg-${backgroundTopicId}`;
+            const backgroundTopicId = (screenId === Screen.LEVEL || screenId === Screen.QUIZ) && state.currentTopic 
+                ? state.currentTopic.id 
+                : 'default';
             await this.updateBackground(backgroundTopicId);
 
             dom.screens.forEach(s => s.classList.toggle('hidden', s.id !== screenId));
@@ -163,18 +205,26 @@ class DashboardApp {
                     renderLevelScreen(); 
                     break;
                 case Screen.QUIZ:
-                    await this.startQuiz();
-                    return; // startQuiz handles its own navigation flow
+                    await this.runQuizSequence();
+                    return; // Quiz sequence handles its own final navigation
                 case Screen.RESULTS:
                     renderResultsScreen(data, this.lastQuizData);
                     break;
             }
+        } catch (error) {
+            console.error(`Navigation to ${screenId} failed:`, error);
+            showToast("An error occurred. Returning to home.", true);
+            await this.navigateTo(Screen.HOME); // Fallback to home screen on error
         } finally {
             showLoading(false);
+            state.isNavigating = false;
         }
     }
-
-    async startQuiz() {
+    
+    /**
+     * Encapsulates the entire quiz flow, from loading to processing results.
+     */
+    async runQuizSequence() {
         if (!this.quizControllerModule) {
             showLoading(true, "Loading quiz engine...");
             this.quizControllerModule = await import('./quiz_controller.js');
@@ -193,10 +243,12 @@ class DashboardApp {
         showLoading(false); // Ensure loading is hidden after quiz ends
 
         if (quizResult.error) {
+            // If quiz fails to start, navigate back to the appropriate screen
             this.navigateTo(state.gameMode === 'topic' ? Screen.LEVEL : Screen.HOME);
         } else {
             this.lastQuizData = quizResult.questions;
             await this.processQuizResults(quizResult);
+
             const newAchievements = await checkAndUnlockAchievements(quizResult.score, state.currentTopic?.title, state.currentLevel, state.gameMode);
             newAchievements.forEach(ach => showToast(`Achievement Unlocked: ${ach.name}`, false, true));
             
@@ -204,14 +256,17 @@ class DashboardApp {
         }
     }
 
+    /**
+     * Processes and saves the results of a completed quiz.
+     * @param {object} quizResult - The result object from the quiz controller.
+     */
     async processQuizResults(quizResult) {
         if (state.gameMode === 'topic') {
             await recordQuizResult(state.currentTopic.title, state.currentLevel, quizResult.score, quizResult.questions);
             if (quizResult.score >= SCORE_TO_UNLOCK_NEXT_LEVEL) {
                 await unlockNextLevel(state.currentTopic.title, state.currentLevel);
             }
-        } else {
-            // For time challenge, topic is 'Time Challenge' and level is always 1
+        } else { // 'timeChallenge'
             await recordQuizResult('Time Challenge', 1, quizResult.score, quizResult.questions);
         }
     }

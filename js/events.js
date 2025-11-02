@@ -4,14 +4,23 @@ import { loadProgress } from './progress.js';
 import { showToast, playSound } from './utils.js';
 import { renderReviewModal } from './ui.js';
 
+/**
+ * Handles closing modals when the backdrop is clicked.
+ * @param {Event} e - The click event.
+ */
 function handleModalClose(e) {
-    if (e.target.closest('.modal-content')) return;
-    const modal = e.target.closest('.modal-container');
-    if (modal) {
-        modal.classList.add('hidden');
+    // Closes the modal only if the click is on the container backdrop, not the content inside.
+    if (e.target === e.currentTarget) {
+        e.currentTarget.classList.add('hidden');
     }
 }
 
+/**
+ * Initializes all primary event listeners for the application.
+ * @param {function} navigateTo - The main navigation function from the dashboard controller.
+ * @param {function} set3DMode - Function to toggle 3D mode.
+ * @param {function} getLastQuizData - Function to retrieve the last quiz's data for review.
+ */
 export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
 
     // --- Settings Menu ---
@@ -42,9 +51,8 @@ export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
         const key = state.user.isGuest ? 'aiQuizProgress_guest' : `aiQuizProgress_${state.user.id}`;
         localStorage.removeItem(key);
         
-        await loadProgress();
-        
-        await navigateTo(Screen.HOME); // Navigate home to show fresh state.
+        await loadProgress(); // Reload state to reflect the reset
+        await navigateTo(Screen.HOME); // Navigate home to show the fresh state
 
         dom.resetConfirmModal.classList.add('hidden');
         showToast('Progress has been reset.');
@@ -59,11 +67,11 @@ export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
     dom.resetConfirmModal.addEventListener('click', handleModalClose);
     dom.reviewModal.addEventListener('click', handleModalClose);
 
-    // --- Navigation ---
+    // --- Static Navigation Buttons ---
     dom.mobileNavItems.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetScreen = btn.dataset.screen;
-            if(targetScreen) {
+            if (targetScreen) {
                 playSound('click');
                 navigateTo(targetScreen);
             }
@@ -83,65 +91,59 @@ export function initEventListeners(navigateTo, set3DMode, getLastQuizData) {
     
     dom.startCurrentLevelBtn.addEventListener('click', () => {
         playSound('click');
-        const p = state.userProgress.topics[state.currentTopic.title] || { highestLevelUnlocked: 1 };
-        state.currentLevel = p.highestLevelUnlocked;
+        const progress = state.userProgress.topics[state.currentTopic.title] || { highestLevelUnlocked: 1 };
+        state.currentLevel = progress.highestLevelUnlocked;
         navigateTo(Screen.QUIZ);
     });
 
-    // --- Global Click Handler for Dynamic Buttons & Closing Menus ---
-    document.addEventListener('click', e => {
-        // --- Close Settings Menu ---
-        if (dom.settingsMenu.classList.contains('open') && !e.target.closest('.settings-container')) {
-            dom.settingsMenu.classList.remove('open');
-        }
-        
-        // --- Button Actions on Results Screen (dynamically added) ---
-        const btn = e.target.closest('button');
-        if (!btn || !btn.id) return;
-        
-        switch(btn.id) {
-            case 'next-level-btn':
-                playSound('click');
-                state.currentLevel++;
-                navigateTo(Screen.QUIZ);
-                break;
-            case 'retry-btn':
-                playSound('click');
-                navigateTo(Screen.QUIZ);
-                break;
-            case 'retry-challenge-btn':
-                playSound('click');
-                const challengeTopic = state.topics.find(t => t.isChallenge);
-                if (challengeTopic) {
-                    state.currentTopic = challengeTopic;
-                    state.gameMode = 'timeChallenge';
-                    navigateTo(Screen.QUIZ);
-                }
-                break;
-            case 'topics-btn':
-                playSound('click');
-                navigateTo(Screen.HOME);
-                break;
-            case 'review-answers-btn':
-                playSound('click');
-                const lastQuiz = getLastQuizData();
-                if (lastQuiz) {
-                    renderReviewModal(lastQuiz);
-                } else {
-                    showToast("No quiz data available to review.", true);
-                }
-                break;
-        }
-    });
-
-    // --- Level Selection ---
+    // --- Level Selection Grid ---
     dom.levelGrid.addEventListener('click', (e) => {
         const levelBtn = e.target.closest('.level-btn.unlocked');
         if (levelBtn) {
             playSound('click');
-            const level = parseInt(levelBtn.querySelector('.level-number').textContent);
+            const level = parseInt(levelBtn.querySelector('.level-number').textContent, 10);
             state.currentLevel = level;
             navigateTo(Screen.QUIZ);
+        }
+    });
+
+    // --- Global Click Handler for dynamic buttons and closing menus ---
+    const dynamicActions = {
+        'next-level-btn': () => {
+            state.currentLevel++;
+            navigateTo(Screen.QUIZ);
+        },
+        'retry-btn': () => navigateTo(Screen.QUIZ),
+        'retry-challenge-btn': () => {
+            const challengeTopic = state.topics.find(t => t.isChallenge);
+            if (challengeTopic) {
+                state.currentTopic = challengeTopic;
+                state.gameMode = 'timeChallenge';
+                navigateTo(Screen.QUIZ);
+            }
+        },
+        'topics-btn': () => navigateTo(Screen.HOME),
+        'review-answers-btn': () => {
+            const lastQuiz = getLastQuizData();
+            if (lastQuiz) {
+                renderReviewModal(lastQuiz);
+            } else {
+                showToast("No quiz data available to review.", true);
+            }
+        }
+    };
+
+    document.addEventListener('click', e => {
+        // --- Close Settings Menu on outside click ---
+        if (dom.settingsMenu.classList.contains('open') && !e.target.closest('.settings-container')) {
+            dom.settingsMenu.classList.remove('open');
+        }
+        
+        // --- Handle dynamically created buttons ---
+        const btn = e.target.closest('button');
+        if (btn && dynamicActions[btn.id]) {
+            playSound('click');
+            dynamicActions[btn.id]();
         }
     });
 }
